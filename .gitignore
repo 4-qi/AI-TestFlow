@@ -11,6 +11,8 @@ build/
 backend/instance/
 *.db
 
+ai-testflow-runs/
+test-results/
+
 .env
 .env.local
-
