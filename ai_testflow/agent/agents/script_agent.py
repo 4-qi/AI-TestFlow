@@ -58,10 +58,7 @@ def _align_api_expectations_with_test_cases(script_plan: dict[str, Any], test_ca
 
 
 def _is_negative_expected_case(test_case: dict[str, Any]) -> bool:
-    text = " ".join(
-        str(test_case.get(key, ""))
-        for key in ["title", "precondition", "steps", "test_data", "expected_result"]
-    )
+    expected_text = str(test_case.get("expected_result", ""))
     negative_terms = [
         "失败",
         "错误",
@@ -75,7 +72,9 @@ def _is_negative_expected_case(test_case: dict[str, Any]) -> bool:
         "长度小于",
         "长度不足",
     ]
-    positive_terms = ["成功", "通过", "允许", "正常"]
-    if any(term in text for term in negative_terms):
+    positive_terms = ["成功", "通过", "允许", "正常", "200"]
+    if any(term in expected_text for term in positive_terms):
+        return False
+    if any(term in expected_text for term in negative_terms):
         return True
-    return not any(term in text for term in positive_terms)
+    return False

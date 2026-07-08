@@ -395,6 +395,45 @@ def test_script_agent_aligns_negative_case_expectations():
     assert aligned["api_tests"][0]["expected_json_contains"]["success"] is False
 
 
+def test_script_agent_does_not_treat_precondition_absence_as_negative_case():
+    script_plan = {
+        "api_tests": [
+            {
+                "test_case_id": "TC-005",
+                "name": "用户名长度6位注册成功",
+                "setup_api_actions": [],
+                "method": "POST",
+                "path": "/api/register",
+                "json_body": {
+                    "username": "abcdef",
+                    "password": "valid123",
+                    "confirm_password": "valid123",
+                },
+                "expected_status": 200,
+                "expected_json_contains": {
+                    "success": True,
+                },
+            }
+        ],
+        "ui_tests": [],
+    }
+    test_cases = [
+        {
+            "test_case_id": "TC-005",
+            "title": "用户名长度6位注册成功",
+            "precondition": "新用户名 abcdef 不存在",
+            "steps": ["调用注册接口"],
+            "test_data": "username=abcdef",
+            "expected_result": "接口返回注册成功，状态码200",
+        }
+    ]
+
+    aligned = _align_api_expectations_with_test_cases(script_plan, test_cases)
+
+    assert aligned["api_tests"][0]["expected_status"] == 200
+    assert aligned["api_tests"][0]["expected_json_contains"]["success"] is True
+
+
 def test_generated_api_tests_run_setup_actions(tmp_path):
     api_tests = [
         {
