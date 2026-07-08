@@ -123,12 +123,12 @@ frontend/src/styles.css
 | --- | --- |
 | `docs/task-analysis-and-workflow.md` | 任务分析、阶段拆解、交付物规划 |
 | `docs/prd.md` | 产品需求文档，定义系统目标和业务规则 |
-| `docs/requirement-spec.md` | 需求规格说明书，把 PRD 拆成模块、规则、接口和验收标准 |
-| `docs/test-cases.md` | 测试用例设计 |
+| `docs/samples/requirement-spec.sample.md` | 需求规格样例 |
+| `docs/samples/test-cases.sample.md` | 测试用例样例 |
 | `docs/manual-test-execution.md` | 页面手工测试执行记录 |
 | `docs/api-test-execution.md` | 接口自动化测试执行记录 |
-| `docs/test-report.md` | 测试报告 |
-| `docs/bug-report.md` | 标准 Bug 单 |
+| `docs/samples/test-report.sample.md` | 测试报告样例 |
+| `docs/samples/bug-report.sample.md` | 标准 Bug 单样例 |
 | `docs/plugin-prototype-design.md` | AI 自动化测试插件最小原型设计 |
 | `docs/agent-prototype-design.md` | AI 自动化测试 Agent 原型设计 |
 | `docs/project-introduction.md` | 项目整体介绍 |
@@ -359,7 +359,7 @@ PRD-FR-003 用户名长度限制
 ai-testflow-runs/latest/requirements.json
 ```
 
-插件把 PRD 解析结果与 `docs/requirement-spec.md` 对齐，整理成模块、规则、接口、页面和验收标准。
+Requirement Agent 把 PRD 分析结果整理成模块、规则、接口、页面和验收标准。
 
 例如：
 
@@ -374,7 +374,7 @@ PRD-FR-003 -> MOD-001 -> REG-002 -> AC-003
 输出：
 
 ```text
-ai-testflow-runs/latest/generated-test-cases.md
+ai-testflow-runs/latest/test-cases.json
 ```
 
 插件根据 PRD 分析和需求拆解结果生成运行态测试用例清单。
@@ -529,7 +529,7 @@ Agent 的一次完整执行过程是：
 读取 agents/ai-testflow-agent.yaml
   -> 读取 ai-testflow.yml
   -> 读取 PRD、需求规格、测试用例、后端代码
-  -> 调用 conda run -n AI-TestFlow python -m ai_testflow run-all
+  -> 调用 conda run -n AI-TestFlow python -m ai_testflow agent-run
   -> 读取 ai-testflow-runs/latest/ 运行产物
   -> 输出测试结论和 Bug 解释
 ```
@@ -547,7 +547,7 @@ Agent 的一次完整执行过程是：
 PRD-FR-003 -> REG-002 -> AC-003 -> TC-REG-003 -> BUG-001
 ```
 
-这条链来自 `traceability.json` 中的缺陷列表，不是 Agent 只支持这一条链。
+这条链来自 `defect-analysis.json` 中的缺陷列表，不是 Agent 只支持这一条链。
 
 ## 10. 从用户操作角度理解系统
 

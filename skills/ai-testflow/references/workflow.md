@@ -23,11 +23,11 @@ Read these paths through `ai-testflow.yml`:
 1. Confirm the working directory is the repository root.
 2. Run `python skills/ai-testflow/scripts/run_ai_testflow.py`.
 3. Read `ai-testflow-runs/latest/inspection-summary.json`.
-4. Read `ai-testflow-runs/latest/traceability.json`.
+4. Read `ai-testflow-runs/latest/defect-analysis.json`.
 5. Read `ai-testflow-runs/latest/pytest-output.txt`.
 6. Read `ai-testflow-runs/latest/prd-analysis.json`.
 7. Read `ai-testflow-runs/latest/requirements.json`.
-8. Read `ai-testflow-runs/latest/generated-test-cases.md`.
+8. Read `ai-testflow-runs/latest/test-cases.json`.
 9. Read `ai-testflow-runs/latest/generated_api_tests.py`.
 10. Read `ai-testflow-runs/latest/generated-test-report.md` when the user asks for the generated report.
 11. Read `ai-testflow-runs/latest/generated-bug-report.md` when the user asks for the generated Bug.
@@ -48,12 +48,12 @@ The skill execution is successful when:
 
 1. The script exits with code `0`.
 2. `inspection-summary.json` exists.
-3. `traceability.json` exists.
+3. `defect-analysis.json` exists.
 4. `pytest-output.txt` exists.
 5. `prd-analysis.json` exists.
 6. `generated_api_tests.py` exists.
 7. `inspection-summary.json` contains `workflow_stages`.
-8. `traceability.json` contains `requirements`, `test_cases`, and `defects`.
+8. `defect-analysis.json` contains `defects`.
 
 The current Demo is not defect-free. The known Demo defect is expected and should be reported as one item in `defects`.
 

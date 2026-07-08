@@ -19,6 +19,17 @@ def client(tmp_path: Path):
     return app.test_client()
 
 
+def test_health_returns_ok(client):
+    response = client.get("/api/health")
+
+    assert response.status_code == 200
+    assert response.get_json() == {
+        "success": True,
+        "message": "服务正常",
+        "data": {"service": "AI-TestFlow backend"},
+    }
+
+
 def test_register_success(client):
     response = client.post(
         "/api/register",
@@ -221,4 +232,3 @@ def test_logout_clears_login(client):
     assert logout_response.status_code == 200
     assert logout_response.get_json()["message"] == "退出登录成功"
     assert me_response.status_code == 401
-

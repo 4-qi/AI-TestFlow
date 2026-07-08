@@ -11,7 +11,7 @@ entrypoint:
     - python
     - -m
     - ai_testflow
-    - run-all
+    - agent-run
 skill_component: skills/ai-testflow/SKILL.md
 config_path: ai-testflow.yml
 inputs:
@@ -19,17 +19,23 @@ inputs:
   backend_source: backend/app.py
   historical_pytest: backend/tests/test_api.py
 reference_artifacts:
-  requirement_spec: docs/requirement-spec.md
-  test_cases: docs/test-cases.md
+  requirement_spec: docs/samples/requirement-spec.sample.md
+  test_cases: docs/samples/test-cases.sample.md
 outputs:
   output_dir: ai-testflow-runs/latest
+  workflow_state: ai-testflow-runs/latest/workflow-state.json
   inspection_summary: ai-testflow-runs/latest/inspection-summary.json
   prd_analysis: ai-testflow-runs/latest/prd-analysis.json
   requirements: ai-testflow-runs/latest/requirements.json
-  generated_test_cases: ai-testflow-runs/latest/generated-test-cases.md
+  test_points: ai-testflow-runs/latest/test-points.json
+  test_cases: ai-testflow-runs/latest/test-cases.json
+  script_plan: ai-testflow-runs/latest/script-plan.json
   generated_api_tests: ai-testflow-runs/latest/generated_api_tests.py
+  generated_playwright_tests: ai-testflow-runs/latest/generated_playwright_tests.spec.js
   pytest_output: ai-testflow-runs/latest/pytest-output.txt
-  traceability: ai-testflow-runs/latest/traceability.json
+  playwright_output: ai-testflow-runs/latest/playwright-output.txt
+  execution_result: ai-testflow-runs/latest/execution-result.json
+  defect_analysis: ai-testflow-runs/latest/defect-analysis.json
   generated_test_report: ai-testflow-runs/latest/generated-test-report.md
   generated_bug_report: ai-testflow-runs/latest/generated-bug-report.md
 workflow_stages:
@@ -42,7 +48,7 @@ workflow_stages:
   - 自动提Bug
 reporting_contract:
   must_read_outputs_before_conclusion: true
-  defect_source: traceability.json defects
+  defect_source: defect-analysis.json defects
   current_demo_defect:
     requirement_id: PRD-FR-003
     rule_id: REG-002

@@ -31,6 +31,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     Path(app.config["DATABASE"]).parent.mkdir(parents=True, exist_ok=True)
     init_db(app.config["DATABASE"])
 
+    @app.get("/api/health")
+    def health():
+        return api_success("服务正常", {"service": "AI-TestFlow backend"})
+
     @app.post("/api/register")
     def register():
         payload = request.get_json(silent=True) or {}

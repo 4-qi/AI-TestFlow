@@ -1,15 +1,13 @@
 # AI-TestFlow
 
-自动化测试全流程插件原型 + React Flask 登录注册 Demo。
+多角色测试工程师 Agent + React Flask 登录注册 Demo。
 
-本仓库用于验证从 PRD 分析、需求拆解、测试用例设计、用例执行、测试报告生成到 Bug 单提交的最小闭环。
+本仓库用于验证真正的 AI Testing Workflow：从 PRD 分析、需求拆解、测试用例设计、接口与页面自动化执行、测试报告生成到 Bug 单提交。
 
-当前项目包含四层：
+当前项目分为两块：
 
-1. React + Flask 登录注册 Demo 系统。
-2. `ai_testflow` CLI 检测工具。
-3. `skills/ai-testflow` 专用 AI Skill 组件原型。
-4. `agents/ai-testflow-agent.*` 本地 Agent 原型。
+1. Demo 系统：React + Flask 登录注册，被 AI 自动测试。
+2. AI Testing Workflow：多角色测试工程师 Agent，是项目核心。
 
 ## 1. 项目结构
 
@@ -37,12 +35,13 @@ AI-TestFlow/
     project-introduction.md
     task-analysis-and-workflow.md
     prd.md
-    requirement-spec.md
-    test-cases.md
+    samples/
+      requirement-spec.sample.md
+      test-cases.sample.md
+      test-report.sample.md
+      bug-report.sample.md
     manual-test-execution.md
     api-test-execution.md
-    test-report.md
-    bug-report.md
     plugin-prototype-design.md
     agent-prototype-design.md
   prompts/
@@ -80,26 +79,32 @@ Node v22.19.0
 npm 10.9.3
 ```
 
-## 3. CLI 插件运行方式
+## 3. 真 Agent 运行方式
 
 在项目根目录执行：
 
 ```bash
-conda run -n AI-TestFlow python -m ai_testflow run-all
+conda run -n AI-TestFlow python -m ai_testflow agent-run
 ```
 
 该命令会自动完成：
 
 1. 读取 `ai-testflow.yml`。
-2. 读取 PRD、后端代码和历史自动化测试。
-3. 由 Agent 执行 PRD 分析，生成 `prd-analysis.json`。
-4. 由 Agent 根据 PRD 生成结构化需求 `requirements.json`。
-5. 由 Agent 根据结构化需求设计运行态测试用例清单 `generated-test-cases.md`。
-6. 生成可执行接口自动化测试脚本 `generated_api_tests.py`。
-7. 运行 `conda run -n AI-TestFlow python -m pytest -q ai-testflow-runs/latest/generated_api_tests.py`。
-8. 捕获真实 pytest 输出。
-9. 将失败用例回溯到 `traceability.json` 的 `defects` 列表。
-10. 生成测试报告和 Bug 单。
+2. 读取 `docs/prd.md`。
+3. PRD Agent 调用大模型分析 PRD。
+4. Requirement Agent 调用大模型拆测试点。
+5. Test Case Agent 调用大模型设计测试用例。
+6. Script Agent 生成 pytest 和 Playwright 脚本。
+7. Execute Agent 执行接口和页面自动化。
+8. Analysis Agent 判断缺陷。
+9. Report Agent 生成测试报告。
+10. Bug Agent 生成 Bug 单。
+
+运行前必须配置：
+
+```bash
+export OPENAI_API_KEY=你的 OpenAI API Key
+```
 
 当前 Demo 中被发现的缺陷实例链路是：
 
@@ -107,7 +112,7 @@ conda run -n AI-TestFlow python -m ai_testflow run-all
 PRD-FR-003 -> REG-002 -> AC-003 -> TC-REG-003 -> BUG-001
 ```
 
-这条链只是当前 Demo 的缺陷实例。CLI 的输出以 `traceability.json` 里的 `defects` 列表为准，后续增加更多需求、用例和失败测试时，可以输出多条缺陷链。
+这条链只是当前 Demo 的缺陷实例。Agent 的输出以 `defect-analysis.json` 里的 `defects` 列表为准，后续增加更多需求、用例和失败测试时，可以输出多条缺陷链。
 
 运行产物输出到：
 
@@ -119,17 +124,23 @@ ai-testflow-runs/latest/
 
 ```text
 inspection-summary.json
+workflow-state.json
 prd-analysis.json
 requirements.json
+test-points.json
+test-cases.json
+script-plan.json
 pytest-output.txt
-traceability.json
-generated-test-cases.md
 generated_api_tests.py
+generated_playwright_tests.spec.js
+playwright-output.txt
+execution-result.json
+defect-analysis.json
 generated-test-report.md
 generated-bug-report.md
 ```
 
-说明：即使检测到 BUG-001，CLI 插件命令也会返回成功。这里的含义是“插件执行成功，并发现缺陷”。
+说明：即使检测到 BUG-001，Agent 命令也会返回成功。这里的含义是“Agent 工作流执行成功，并发现产品缺陷”。
 
 ## 4. Agent 原型
 
@@ -140,17 +151,20 @@ agents/ai-testflow-agent.md
 agents/ai-testflow-agent.yaml
 ```
 
-Agent 的职责是调度和解释：
+Agent 的职责是模拟测试工程师团队：
 
 ```text
-读取配置和上下文
-  -> 调用 ai_testflow CLI
-  -> 读取运行产物
-  -> 解释 PRD 到 Bug 的追踪链路
-  -> 输出测试结论和后续建议
+PRD Agent
+  -> Requirement Agent
+  -> Test Case Agent
+  -> Script Agent
+  -> Execute Agent
+  -> Analysis Agent
+  -> Report Agent
+  -> Bug Agent
 ```
 
-Agent 不替代 CLI。CLI 负责稳定执行，Agent 负责理解、编排和解释。
+`run-all` 保留为旧兼容入口，不再作为主推演示方式。
 
 ## 5. Skill 组件运行方式
 
@@ -240,7 +254,7 @@ conda run -n AI-TestFlow python -m pytest -q tests
 已验证结果：
 
 ```text
-8 passed
+9 passed
 ```
 
 ## 10. 预埋缺陷
@@ -274,12 +288,12 @@ PRD-FR-003 -> REG-002 -> AC-003 -> TC-REG-003 -> BUG-001
 | 项目介绍 | `docs/project-introduction.md` |
 | 任务分析与流程 | `docs/task-analysis-and-workflow.md` |
 | PRD | `docs/prd.md` |
-| 需求规格说明书 | `docs/requirement-spec.md` |
-| 测试用例 | `docs/test-cases.md` |
+| 需求规格样例 | `docs/samples/requirement-spec.sample.md` |
+| 测试用例样例 | `docs/samples/test-cases.sample.md` |
 | 手工测试执行记录 | `docs/manual-test-execution.md` |
 | 接口自动化测试执行记录 | `docs/api-test-execution.md` |
-| 测试报告 | `docs/test-report.md` |
-| Bug 单 | `docs/bug-report.md` |
+| 测试报告样例 | `docs/samples/test-report.sample.md` |
+| Bug 单样例 | `docs/samples/bug-report.sample.md` |
 | 插件原型设计 | `docs/plugin-prototype-design.md` |
 | Agent 原型设计 | `docs/agent-prototype-design.md` |
 

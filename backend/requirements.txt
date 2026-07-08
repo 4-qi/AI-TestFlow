@@ -2,3 +2,4 @@ Flask==3.0.3
 Flask-Cors==4.0.1
 pytest==8.2.2
 PyYAML==6.0.3
+openai==2.14.0

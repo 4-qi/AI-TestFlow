@@ -266,8 +266,8 @@
     "backend/app.py",
     "backend/tests/test_api.py",
     "docs/api-test-execution.md",
-    "docs/bug-report.md",
     "docs/prd.md",
-    "docs/test-report.md"
+    "docs/samples/bug-report.sample.md",
+    "docs/samples/test-report.sample.md"
   ]
 }
