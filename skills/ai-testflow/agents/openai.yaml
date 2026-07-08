@@ -1,0 +1,4 @@
+interface:
+  display_name: "AI-TestFlow"
+  short_description: "Run the AI-TestFlow automated testing workflow."
+  default_prompt: "Run the AI-TestFlow inspection workflow and explain any defects found."

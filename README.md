@@ -4,6 +4,12 @@
 
 本仓库用于验证从 PRD 分析、需求拆解、测试用例设计、用例执行、测试报告生成到 Bug 单提交的最小闭环。
 
+当前项目包含三层：
+
+1. React + Flask 登录注册 Demo 系统。
+2. `ai_testflow` CLI 检测工具。
+3. `skills/ai-testflow` 专用 AI Skill 组件原型。
+
 ## 1. 项目结构
 
 ```text
@@ -11,6 +17,11 @@ AI-TestFlow/
   AI_TESTFLOW_ENTRYPOINT.md
   ai-testflow.yml
   ai_testflow/
+  skills/
+    ai-testflow/
+      SKILL.md
+      references/
+      scripts/
   backend/
     app.py
     requirements.txt
@@ -99,7 +110,23 @@ generated-bug-report.md
 
 说明：即使检测到 BUG-001，CLI 插件命令也会返回成功。这里的含义是“插件执行成功，并发现缺陷”。
 
-## 4. 安装依赖
+## 4. Skill 组件运行方式
+
+本仓库提供一个 repo 内专用 Skill 原型：
+
+```text
+skills/ai-testflow/SKILL.md
+```
+
+当 AI 需要以专用组件方式执行本项目检验流程时，从该 Skill 开始，并运行：
+
+```bash
+python skills/ai-testflow/scripts/run_ai_testflow.py
+```
+
+Skill 会调用现有 CLI，并要求 AI 读取 `ai-testflow-runs/latest/` 下的结构化结果来解释缺陷。
+
+## 5. 安装依赖
 
 后端依赖：
 
@@ -114,7 +141,7 @@ cd frontend
 npm install
 ```
 
-## 5. 启动 Demo 后端
+## 6. 启动 Demo 后端
 
 在项目根目录执行：
 
@@ -132,7 +159,7 @@ http://127.0.0.1:5000
 
 后端启动后会一直占用当前终端，这是正常现象。看到 `Backend URL: http://127.0.0.1:5000` 后，保持该终端运行，再打开一个新终端启动前端。停止后端时，在后端终端按 `Ctrl + C`。
 
-## 6. 启动 Demo 前端
+## 7. 启动 Demo 前端
 
 在 `frontend` 目录执行：
 
@@ -146,7 +173,7 @@ npm run dev
 http://127.0.0.1:5173
 ```
 
-## 7. 运行底层 pytest
+## 8. 运行底层 pytest
 
 在项目根目录执行：
 
@@ -174,7 +201,7 @@ conda run -n AI-TestFlow python -m pytest -q tests
 4 passed
 ```
 
-## 8. 预埋缺陷
+## 9. 预埋缺陷
 
 需求要求：
 
@@ -194,11 +221,12 @@ conda run -n AI-TestFlow python -m pytest -q tests
 PRD-FR-003 -> REG-002 -> AC-003 -> TC-REG-003 -> BUG-001
 ```
 
-## 9. 文档入口
+## 10. 文档入口
 
 | 文档 | 路径 |
 | --- | --- |
 | AI 检验流程入口 | `AI_TESTFLOW_ENTRYPOINT.md` |
+| AI Skill 组件 | `skills/ai-testflow/SKILL.md` |
 | 项目介绍 | `docs/project-introduction.md` |
 | 任务分析与流程 | `docs/task-analysis-and-workflow.md` |
 | PRD | `docs/prd.md` |
@@ -210,7 +238,7 @@ PRD-FR-003 -> REG-002 -> AC-003 -> TC-REG-003 -> BUG-001
 | Bug 单 | `docs/bug-report.md` |
 | 插件原型设计 | `docs/plugin-prototype-design.md` |
 
-## 10. AI 检验入口
+## 11. AI 检验入口
 
 如果要让 AI 按自动化测试插件流程检验本项目，从根目录入口开始：
 
