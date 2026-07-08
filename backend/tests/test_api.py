@@ -93,6 +93,21 @@ def test_register_rejects_duplicate_username(client):
     assert response.get_json()["message"] == "用户名已存在"
 
 
+@pytest.mark.xfail(reason="BUG-001: REG-002 is deliberately missing in backend register validation", strict=True)
+def test_register_rejects_short_username_by_requirement(client):
+    response = client.post(
+        "/api/register",
+        json={
+            "username": "abc",
+            "password": "Password123",
+            "confirm_password": "Password123",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.get_json()["message"] == "用户名长度不能少于6位"
+
+
 def test_login_success(client):
     client.post(
         "/api/register",

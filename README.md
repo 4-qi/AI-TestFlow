@@ -115,7 +115,7 @@ conda run -n AI-TestFlow python -m pytest -q backend/tests
 已验证结果：
 
 ```text
-12 passed in 0.93s
+12 passed, 1 xfailed
 ```
 
 ## 7. 预埋缺陷
