@@ -39,7 +39,7 @@ def run_script_agent(
 
 
 def _render_playwright_tests(flows: list[dict[str, Any]]) -> str:
-    sections = ["import { test, expect } from '@playwright/test';\n"]
+    sections = ["import { test, expect } from '../../frontend/node_modules/@playwright/test';\n"]
     flow_ids = {flow["flow_id"] for flow in flows}
     if "PW-REG-001" in flow_ids:
         sections.append(SHORT_USERNAME_FLOW)

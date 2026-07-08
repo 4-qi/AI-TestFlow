@@ -5,26 +5,36 @@ def render_generated_api_tests(test_cases: list[dict[str, str]]) -> str:
     test_ids = {item["test_case_id"] for item in test_cases}
     sections = [
         HEADER,
-        _case("TC-REG-001", test_ids, TEST_REGISTER_SUCCESS),
-        _case("TC-REG-002", test_ids, TEST_REGISTER_REQUIRES_USERNAME),
-        _case("TC-REG-003", test_ids, TEST_REGISTER_REJECTS_SHORT_USERNAME),
-        _case("TC-REG-004", test_ids, TEST_REGISTER_REQUIRES_PASSWORD),
-        _case("TC-REG-005", test_ids, TEST_REGISTER_REQUIRES_MATCHING_PASSWORDS),
-        _case("TC-REG-006", test_ids, TEST_REGISTER_REJECTS_DUPLICATE_USERNAME),
-        _case("TC-LOGIN-001", test_ids, TEST_LOGIN_SUCCESS),
-        _case("TC-LOGIN-002", test_ids, TEST_LOGIN_REJECTS_WRONG_PASSWORD),
-        _case("TC-LOGIN-003", test_ids, TEST_LOGIN_REJECTS_UNKNOWN_USER),
-        _case("TC-ME-001", test_ids, TEST_ME_REQUIRES_LOGIN),
-        _case("TC-ME-002", test_ids, TEST_ME_RETURNS_LOGGED_IN_USER),
-        _case("TC-LOGOUT-001", test_ids, TEST_LOGOUT_CLEARS_LOGIN),
+        _case("TC-REG-001", test_ids, test_cases, TEST_REGISTER_SUCCESS, ["注册成功"]),
+        _case("TC-REG-002", test_ids, test_cases, TEST_REGISTER_REQUIRES_USERNAME, ["用户名为空"]),
+        _case("TC-REG-003", test_ids, test_cases, TEST_REGISTER_REJECTS_SHORT_USERNAME, ["用户名长度", "小于6"]),
+        _case("TC-REG-004", test_ids, test_cases, TEST_REGISTER_REQUIRES_PASSWORD, ["密码为空"]),
+        _case("TC-REG-005", test_ids, test_cases, TEST_REGISTER_REQUIRES_MATCHING_PASSWORDS, ["确认密码", "不一致"]),
+        _case("TC-REG-006", test_ids, test_cases, TEST_REGISTER_REJECTS_DUPLICATE_USERNAME, ["重复用户名"]),
+        _case("TC-LOGIN-001", test_ids, test_cases, TEST_LOGIN_SUCCESS, ["登录成功"]),
+        _case("TC-LOGIN-002", test_ids, test_cases, TEST_LOGIN_REJECTS_WRONG_PASSWORD, ["密码错误"]),
+        _case("TC-LOGIN-003", test_ids, test_cases, TEST_LOGIN_REJECTS_UNKNOWN_USER, ["不存在", "用户名"]),
+        _case("TC-ME-001", test_ids, test_cases, TEST_ME_REQUIRES_LOGIN, ["未登录"]),
+        _case("TC-ME-002", test_ids, test_cases, TEST_ME_RETURNS_LOGGED_IN_USER, ["首页显示用户名"]),
+        _case("TC-LOGOUT-001", test_ids, test_cases, TEST_LOGOUT_CLEARS_LOGIN, ["退出登录"]),
     ]
     return "\n\n".join(section for section in sections if section).rstrip() + "\n"
 
 
-def _case(test_case_id: str, test_ids: set[str], body: str) -> str:
+def _case(test_case_id: str, test_ids: set[str], test_cases: list[dict[str, str]], body: str, keywords: list[str]) -> str:
     if test_case_id not in test_ids:
-        return ""
+        if not any(_matches_case(item, keywords) for item in test_cases):
+            return ""
     return body
+
+
+def _matches_case(test_case: dict[str, str], keywords: list[str]) -> bool:
+    searchable = " ".join(
+        str(test_case.get(key, ""))
+        for key in ["title", "test_data", "expected_result", "precondition"]
+    )
+    normalized = searchable.replace(" ", "")
+    return all(keyword in normalized for keyword in keywords)
 
 
 HEADER = '''from __future__ import annotations

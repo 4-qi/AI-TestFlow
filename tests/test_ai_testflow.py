@@ -257,6 +257,27 @@ def test_test_case_design_parses_rows_and_generates_api_test_script():
     assert "def test_generated_register_success(client):" not in generated_script
 
 
+def test_generated_api_tests_use_semantic_case_matching_for_llm_ids():
+    test_cases = [
+        {
+            "test_case_id": "TC-003",
+            "requirement_id": "REQ-003",
+            "test_point_id": "TP-003",
+            "title": "用户名长度小于6时注册失败",
+            "precondition": "注册接口可用",
+            "test_data": "username=abc, password=Test@123, confirmPassword=Test@123",
+            "expected_result": "接口返回错误码和提示；页面显示用户名长度不足的错误信息",
+            "priority": "P0",
+            "automation_type": "both",
+        }
+    ]
+
+    generated_script = render_generated_api_tests(test_cases)
+
+    assert "def test_generated_register_rejects_short_username(client):" in generated_script
+    assert "def test_generated_register_success(client):" not in generated_script
+
+
 def test_script_agent_uses_structured_plan_to_generate_scripts(tmp_path):
     class FakeClient:
         def generate_json(self, **kwargs):
@@ -295,7 +316,9 @@ def test_script_agent_uses_structured_plan_to_generate_scripts(tmp_path):
 
     assert result["script_plan"]["api_test_case_ids"] == ["TC-REG-003"]
     assert "def test_generated_register_rejects_short_username(client):" in api_target.read_text(encoding="utf-8")
-    assert "short username registration should be rejected" in playwright_target.read_text(encoding="utf-8")
+    playwright_text = playwright_target.read_text(encoding="utf-8")
+    assert "short username registration should be rejected" in playwright_text
+    assert "../../frontend/node_modules/@playwright/test" in playwright_text
 
 
 def test_known_defect_maps_short_username_failure_to_bug():
