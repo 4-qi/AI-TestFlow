@@ -111,9 +111,10 @@ cp .env.example .env
 
 ```text
 DEEPSEEK_API_KEY=你的 DeepSeek API Key
+OPENAI_API_KEY=你的 OpenAI API Key
 ```
 
-默认模型在 `ai-testflow.yml` 中手动设置：
+如果使用 DeepSeek，`ai-testflow.yml` 中保持如下配置：
 
 ```yaml
 llm:
@@ -122,6 +123,17 @@ llm:
   api_key_env: DEEPSEEK_API_KEY
   base_url: https://api.deepseek.com
 ```
+
+如果使用 OpenAI API，把 `ai-testflow.yml` 中的 `llm` 改成：
+
+```yaml
+llm:
+  provider: openai
+  model: gpt-4.1-mini
+  api_key_env: OPENAI_API_KEY
+```
+
+OpenAI 配置不需要 `base_url`。如果要使用其他 OpenAI 模型，只修改 `llm.model` 的值即可。
 
 如果要切换模型，直接修改 `llm.model`，例如在 DeepSeek Pro 和 Flash 之间切换：
 
@@ -132,6 +144,8 @@ model: deepseek-v4-pro
 ```yaml
 model: deepseek-v4-flash
 ```
+
+`.env` 只保存在本地，不要提交到 Git；`.env.example` 用于说明需要哪些环境变量，可以提交。
 
 当前 Demo 中被发现的缺陷实例链路是：
 
