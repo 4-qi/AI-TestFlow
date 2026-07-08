@@ -11,12 +11,12 @@ Read these paths through `ai-testflow.yml`:
 | Key | Path |
 | --- | --- |
 | `prd_path` | `docs/prd.md` |
-| `requirement_spec_path` | `docs/requirement-spec.md` |
-| `test_cases_path` | `docs/test-cases.md` |
 | `backend_source_path` | `backend/app.py` |
 | `pytest_path` | `backend/tests` |
 | `generated_tests_path` | `ai-testflow-runs/latest/generated_api_tests.py` |
 | `output_dir` | `ai-testflow-runs/latest` |
+
+`requirement_spec_path` and `test_cases_path` can exist in `ai-testflow.yml` as reference artifact paths, but the Agent workflow generates runtime requirements and runtime test cases from `docs/prd.md`.
 
 ## Execution Steps
 

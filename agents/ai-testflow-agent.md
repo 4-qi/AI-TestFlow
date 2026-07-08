@@ -40,12 +40,10 @@ AI-TestFlow Agent
 
 Agent 必须从 `ai-testflow.yml` 读取路径和命令，不允许自行重写路径。
 
-当前输入包括：
+当前主输入包括：
 
 ```text
 docs/prd.md
-docs/requirement-spec.md
-docs/test-cases.md
 backend/app.py
 backend/tests/test_api.py
 ai-testflow.yml
@@ -55,12 +53,19 @@ ai-testflow.yml
 
 | 输入 | 用途 |
 | --- | --- |
-| `docs/prd.md` | 提取原始产品需求 |
-| `docs/requirement-spec.md` | 对齐结构化需求、业务规则、验收标准 |
-| `docs/test-cases.md` | 获取测试用例和需求追踪关系 |
+| `docs/prd.md` | 提取原始产品需求，并生成运行态需求拆解和测试用例 |
 | `backend/app.py` | 检查真实后端实现 |
 | `backend/tests/test_api.py` | 获取历史自动化测试和断言风格 |
 | `ai-testflow.yml` | 获取 CLI 执行路径、命令和输出目录 |
+
+参考交付物：
+
+```text
+docs/requirement-spec.md
+docs/test-cases.md
+```
+
+这两个文件用于展示人工交付物格式，不是 Agent 主流程生成需求和测试用例时的必要输入。
 
 ## 4. Agent 执行流程
 
@@ -69,8 +74,9 @@ Agent 的主流程固定如下：
 ```text
 读取配置
   -> 读取 PRD
-  -> 读取需求规格
-  -> 读取测试用例
+  -> 分析 PRD
+  -> 生成需求拆解
+  -> 设计测试用例
   -> 读取后端实现
   -> 调用 CLI
   -> 生成运行态测试脚本

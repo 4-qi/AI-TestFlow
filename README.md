@@ -91,14 +91,15 @@ conda run -n AI-TestFlow python -m ai_testflow run-all
 该命令会自动完成：
 
 1. 读取 `ai-testflow.yml`。
-2. 读取 PRD、需求规格、测试用例、后端代码和历史自动化测试。
-3. 从 PRD 和需求规格中生成结构化需求 `prd-analysis.json`、`requirements.json`。
-4. 从测试用例文档生成插件运行态测试用例清单 `generated-test-cases.md`。
-5. 生成可执行接口自动化测试脚本 `generated_api_tests.py`。
-6. 运行 `conda run -n AI-TestFlow python -m pytest -q ai-testflow-runs/latest/generated_api_tests.py`。
-7. 捕获真实 pytest 输出。
-8. 将失败用例回溯到 `traceability.json` 的 `defects` 列表。
-9. 生成测试报告和 Bug 单。
+2. 读取 PRD、后端代码和历史自动化测试。
+3. 由 Agent 执行 PRD 分析，生成 `prd-analysis.json`。
+4. 由 Agent 根据 PRD 生成结构化需求 `requirements.json`。
+5. 由 Agent 根据结构化需求设计运行态测试用例清单 `generated-test-cases.md`。
+6. 生成可执行接口自动化测试脚本 `generated_api_tests.py`。
+7. 运行 `conda run -n AI-TestFlow python -m pytest -q ai-testflow-runs/latest/generated_api_tests.py`。
+8. 捕获真实 pytest 输出。
+9. 将失败用例回溯到 `traceability.json` 的 `defects` 列表。
+10. 生成测试报告和 Bug 单。
 
 当前 Demo 中被发现的缺陷实例链路是：
 
@@ -239,7 +240,7 @@ conda run -n AI-TestFlow python -m pytest -q tests
 已验证结果：
 
 ```text
-7 passed
+8 passed
 ```
 
 ## 10. 预埋缺陷

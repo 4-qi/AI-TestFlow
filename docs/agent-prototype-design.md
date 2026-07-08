@@ -61,11 +61,11 @@ Agent 输入：
 ```text
 ai-testflow.yml
 docs/prd.md
-docs/requirement-spec.md
-docs/test-cases.md
 backend/app.py
 backend/tests/test_api.py
 ```
+
+`docs/requirement-spec.md` 和 `docs/test-cases.md` 是人工交付物参考，不是 Agent 主流程生成运行态需求和测试用例的必要输入。
 
 Agent 调用：
 

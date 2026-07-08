@@ -96,7 +96,7 @@ def build_generated_test_cases(test_cases: list[dict[str, str]]) -> str:
     )
     return f"""# AI-TestFlow 生成测试用例清单
 
-该文件由 CLI 从 `docs/test-cases.md` 结构化生成，用于模拟一站式插件的“测试用例设计”阶段产物。
+该文件由 Agent 在读取 `docs/prd.md` 并完成需求拆解后生成，用于一站式流程的“测试用例设计”阶段产物。
 
 | 用例编号 | 关联需求 | 标题 | 期望结果 | 优先级 |
 | --- | --- | --- | --- | --- |

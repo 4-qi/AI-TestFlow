@@ -6,8 +6,9 @@
       "title": "注册页面展示",
       "description": "系统应提供注册页面，页面包含用户名、密码、确认密码输入框，以及注册按钮和跳转登录入口。",
       "module_id": "MOD-001",
-      "test_focus": "页面元素完整性",
-      "source": "docs/prd.md"
+      "test_focus": "注册页面元素完整性",
+      "source": "docs/prd.md",
+      "generated_by": "ai_testflow_agent"
     },
     {
       "requirement_id": "PRD-FR-002",
@@ -15,7 +16,8 @@
       "description": "用户注册时，用户名不能为空。",
       "module_id": "MOD-001",
       "test_focus": "空用户名注册失败",
-      "source": "docs/prd.md"
+      "source": "docs/prd.md",
+      "generated_by": "ai_testflow_agent"
     },
     {
       "requirement_id": "PRD-FR-003",
@@ -23,7 +25,8 @@
       "description": "用户注册时，用户名长度必须大于等于 6 位。",
       "module_id": "MOD-001",
       "test_focus": "小于 6 位用户名注册失败",
-      "source": "docs/prd.md"
+      "source": "docs/prd.md",
+      "generated_by": "ai_testflow_agent"
     },
     {
       "requirement_id": "PRD-FR-004",
@@ -31,7 +34,8 @@
       "description": "用户注册时，密码不能为空。",
       "module_id": "MOD-001",
       "test_focus": "空密码注册失败",
-      "source": "docs/prd.md"
+      "source": "docs/prd.md",
+      "generated_by": "ai_testflow_agent"
     },
     {
       "requirement_id": "PRD-FR-005",
@@ -39,7 +43,8 @@
       "description": "用户注册时，确认密码必须与密码一致。",
       "module_id": "MOD-001",
       "test_focus": "两次密码不一致注册失败",
-      "source": "docs/prd.md"
+      "source": "docs/prd.md",
+      "generated_by": "ai_testflow_agent"
     },
     {
       "requirement_id": "PRD-FR-006",
@@ -47,7 +52,8 @@
       "description": "用户注册时，用户名不能与已有用户重复。",
       "module_id": "MOD-001",
       "test_focus": "重复用户名注册失败",
-      "source": "docs/prd.md"
+      "source": "docs/prd.md",
+      "generated_by": "ai_testflow_agent"
     },
     {
       "requirement_id": "PRD-FR-007",
@@ -55,15 +61,17 @@
       "description": "用户输入满足规则且用户名未被占用时，系统应创建账号并提示注册成功。",
       "module_id": "MOD-001",
       "test_focus": "合法输入注册成功",
-      "source": "docs/prd.md"
+      "source": "docs/prd.md",
+      "generated_by": "ai_testflow_agent"
     },
     {
       "requirement_id": "PRD-FR-008",
       "title": "登录页面展示",
       "description": "系统应提供登录页面，页面包含用户名、密码输入框，以及登录按钮和跳转注册入口。",
       "module_id": "MOD-002",
-      "test_focus": "页面元素完整性",
-      "source": "docs/prd.md"
+      "test_focus": "登录页面元素完整性",
+      "source": "docs/prd.md",
+      "generated_by": "ai_testflow_agent"
     },
     {
       "requirement_id": "PRD-FR-009",
@@ -71,7 +79,8 @@
       "description": "用户登录时，系统应校验用户名是否存在。",
       "module_id": "MOD-002",
       "test_focus": "未注册用户登录失败",
-      "source": "docs/prd.md"
+      "source": "docs/prd.md",
+      "generated_by": "ai_testflow_agent"
     },
     {
       "requirement_id": "PRD-FR-010",
@@ -79,7 +88,8 @@
       "description": "用户登录时，系统应校验密码是否正确。",
       "module_id": "MOD-002",
       "test_focus": "密码错误登录失败",
-      "source": "docs/prd.md"
+      "source": "docs/prd.md",
+      "generated_by": "ai_testflow_agent"
     },
     {
       "requirement_id": "PRD-FR-011",
@@ -87,7 +97,8 @@
       "description": "用户输入已注册用户名和正确密码时，系统应允许用户登录并进入首页。",
       "module_id": "MOD-002",
       "test_focus": "正确账号密码登录成功",
-      "source": "docs/prd.md"
+      "source": "docs/prd.md",
+      "generated_by": "ai_testflow_agent"
     },
     {
       "requirement_id": "PRD-FR-012",
@@ -95,7 +106,8 @@
       "description": "用户登录失败时，系统应展示明确错误提示。",
       "module_id": "MOD-002",
       "test_focus": "错误信息可读",
-      "source": "docs/prd.md"
+      "source": "docs/prd.md",
+      "generated_by": "ai_testflow_agent"
     },
     {
       "requirement_id": "PRD-FR-013",
@@ -103,7 +115,8 @@
       "description": "用户登录成功后，系统首页应展示当前登录用户名。",
       "module_id": "MOD-003",
       "test_focus": "登录态展示",
-      "source": "docs/prd.md"
+      "source": "docs/prd.md",
+      "generated_by": "ai_testflow_agent"
     },
     {
       "requirement_id": "PRD-FR-014",
@@ -111,7 +124,8 @@
       "description": "用户在首页点击退出登录后，系统应清除登录状态并返回登录页面。",
       "module_id": "MOD-003",
       "test_focus": "登录态清除",
-      "source": "docs/prd.md"
+      "source": "docs/prd.md",
+      "generated_by": "ai_testflow_agent"
     }
   ],
   "test_cases": [
@@ -254,8 +268,6 @@
     "docs/api-test-execution.md",
     "docs/bug-report.md",
     "docs/prd.md",
-    "docs/requirement-spec.md",
-    "docs/test-cases.md",
     "docs/test-report.md"
   ]
 }

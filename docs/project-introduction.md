@@ -377,7 +377,7 @@ PRD-FR-003 -> MOD-001 -> REG-002 -> AC-003
 ai-testflow-runs/latest/generated-test-cases.md
 ```
 
-插件根据 `docs/test-cases.md` 生成运行态测试用例清单。
+插件根据 PRD 分析和需求拆解结果生成运行态测试用例清单。
 
 例如 `REG-002` 会生成：
 

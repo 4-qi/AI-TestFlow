@@ -83,8 +83,6 @@ agents/ai-testflow-agent.md
 agents/ai-testflow-agent.yaml
 ai-testflow.yml
 docs/prd.md
-docs/requirement-spec.md
-docs/test-cases.md
 backend/app.py
 backend/tests/test_api.py
 docs/api-test-execution.md
@@ -99,9 +97,7 @@ docs/bug-report.md
 | `agents/ai-testflow-agent.md` | 获取 Agent 角色、流程和行为约束 |
 | `agents/ai-testflow-agent.yaml` | 获取 Agent 结构化输入、输出和执行契约 |
 | `ai-testflow.yml` | 获取 CLI 精确路径和命令 |
-| `docs/prd.md` | 获取原始需求和业务规则 |
-| `docs/requirement-spec.md` | 获取结构化需求、接口规格、验收标准 |
-| `docs/test-cases.md` | 获取测试用例和需求追踪关系 |
+| `docs/prd.md` | 获取原始需求和业务规则，并生成运行态需求拆解和测试用例 |
 | `backend/app.py` | 获取真实后端实现 |
 | `backend/tests/test_api.py` | 获取历史自动化测试和真实断言风格 |
 | `docs/api-test-execution.md` | 获取接口测试执行记录格式 |
@@ -217,16 +213,15 @@ AI 完成检验后，应输出以下内容：
 
 1. 读取 docs/prd.md，提取原始需求。
 2. 读取 docs/requirement-spec.md，提取结构化需求、接口规格和验收标准。
-3. 读取 docs/test-cases.md，确认测试用例与需求编号的追踪关系。
-4. 读取 backend/app.py，确认当前后端真实实现。
-5. 读取 backend/tests/test_api.py，确认自动化测试真实断言。
-6. 运行 conda run -n AI-TestFlow python -m ai_testflow run-all。
-7. 读取 ai-testflow-runs/latest/inspection-summary.json、prd-analysis.json、requirements.json、pytest-output.txt、traceability.json、generated-test-cases.md、generated_api_tests.py、generated-test-report.md 和 generated-bug-report.md。
-8. 分析 inspection-summary.json 中的 workflow_stages、requirements_count、test_cases_count 和 defects。
-9. 分析 pytest 输出中的失败用例。
-10. 将失败用例回溯到 traceability.json 中的缺陷列表；当前 Demo 缺陷实例为 PRD-FR-003、REG-002、AC-003、TC-REG-003 和 BUG-001。
-11. 如执行结果与 docs/api-test-execution.md、docs/test-report.md、docs/bug-report.md 不一致，请更新这些文档。
-12. 最后输出本轮 AI 检验结论。
+3. 读取 backend/app.py，确认当前后端真实实现。
+4. 读取 backend/tests/test_api.py，确认自动化测试真实断言。
+5. 运行 conda run -n AI-TestFlow python -m ai_testflow run-all。
+6. 读取 ai-testflow-runs/latest/inspection-summary.json、prd-analysis.json、requirements.json、pytest-output.txt、traceability.json、generated-test-cases.md、generated_api_tests.py、generated-test-report.md 和 generated-bug-report.md。
+7. 分析 inspection-summary.json 中的 workflow_stages、requirements_count、test_cases_count 和 defects。
+8. 分析 pytest 输出中的失败用例。
+9. 将失败用例回溯到 traceability.json 中的缺陷列表；当前 Demo 缺陷实例为 PRD-FR-003、REG-002、AC-003、TC-REG-003 和 BUG-001。
+10. 如执行结果与 docs/api-test-execution.md、docs/test-report.md、docs/bug-report.md 不一致，请更新这些文档。
+11. 最后输出本轮 AI 检验结论。
 
 要求：
 

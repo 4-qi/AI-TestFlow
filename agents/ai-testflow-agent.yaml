@@ -16,10 +16,11 @@ skill_component: skills/ai-testflow/SKILL.md
 config_path: ai-testflow.yml
 inputs:
   prd: docs/prd.md
-  requirement_spec: docs/requirement-spec.md
-  test_cases: docs/test-cases.md
   backend_source: backend/app.py
   historical_pytest: backend/tests/test_api.py
+reference_artifacts:
+  requirement_spec: docs/requirement-spec.md
+  test_cases: docs/test-cases.md
 outputs:
   output_dir: ai-testflow-runs/latest
   inspection_summary: ai-testflow-runs/latest/inspection-summary.json

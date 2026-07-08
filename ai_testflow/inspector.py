@@ -5,7 +5,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from .analyzer import analyze_prd, build_requirements, extract_requirement_rows, extract_test_case_rows
+from .agent_designer import design_requirements_from_prd, design_test_cases_from_requirements
+from .analyzer import analyze_prd
 from .config import TestFlowConfig
 from .pytest_runner import PytestResult, run_pytest
 from .report_writer import build_bug_report, build_generated_test_cases, build_test_report
@@ -52,9 +53,8 @@ class InspectionResult:
 def run_inspection(config: TestFlowConfig, project_root: Path) -> InspectionResult:
     source_context = _read_source_context(config, project_root)
     prd_analysis = analyze_prd(source_context[str(config.prd_path)])
-    requirement_rows = extract_requirement_rows(source_context[str(config.requirement_spec_path)])
-    requirements = build_requirements(prd_analysis, requirement_rows)
-    test_cases = extract_test_case_rows(source_context[str(config.test_cases_path)])
+    requirements = design_requirements_from_prd(prd_analysis)
+    test_cases = design_test_cases_from_requirements(requirements)
     generated_test_cases = build_generated_test_cases(test_cases)
     generated_api_tests = render_generated_api_tests(test_cases)
     _write_generated_api_tests(config, project_root, generated_api_tests)
@@ -116,8 +116,6 @@ def run_inspection(config: TestFlowConfig, project_root: Path) -> InspectionResu
 def _read_source_context(config: TestFlowConfig, project_root: Path) -> dict[str, str]:
     paths = [
         config.prd_path,
-        config.requirement_spec_path,
-        config.test_cases_path,
         config.backend_source_path,
         config.pytest_path / "test_api.py",
         config.api_execution_report_path,

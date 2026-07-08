@@ -41,7 +41,7 @@ agents/ai-testflow-agent.yaml
 | Agent 编排 | 用户检测请求、Agent 配置 | 测试结论、缺陷解释、后续建议 |
 | PRD 解析 | `docs/prd.md` | `ai-testflow-runs/latest/prd-analysis.json` |
 | 需求结构化 | PRD 解析结果、`docs/requirement-spec.md` | `ai-testflow-runs/latest/requirements.json` |
-| 用例生成 | 结构化需求、`docs/test-cases.md` | `ai-testflow-runs/latest/generated-test-cases.md` |
+| 用例生成 | Agent 生成的结构化需求 | `ai-testflow-runs/latest/generated-test-cases.md` |
 | 自动化脚本生成 | 测试用例、接口规格 | `ai-testflow-runs/latest/generated_api_tests.py` |
 | 自动化执行 | 生成的接口测试脚本 | `ai-testflow-runs/latest/pytest-output.txt` |
 | 手工记录辅助 | 页面用例、页面地址 | `docs/manual-test-execution.md` |
@@ -105,7 +105,7 @@ PRD-FR-003 -> REG-002 -> AC-003 -> TC-REG-003 -> BUG-001
 
 本项目最小实现：
 
-读取 `docs/test-cases.md`，生成运行态测试用例清单 `ai-testflow-runs/latest/generated-test-cases.md`，覆盖注册、登录、当前用户查询和退出登录。
+Agent 根据 PRD 分析和需求拆解结果生成运行态测试用例清单 `ai-testflow-runs/latest/generated-test-cases.md`，覆盖注册、登录、当前用户查询和退出登录。
 
 ### 3.4 自动化测试脚本生成模块
 
@@ -117,7 +117,7 @@ PRD-FR-003 -> REG-002 -> AC-003 -> TC-REG-003 -> BUG-001
 
 本项目最小实现：
 
-读取 `docs/test-cases.md` 后生成：
+读取 Agent 设计出的测试用例后生成：
 
 ```text
 ai-testflow-runs/latest/generated_api_tests.py
@@ -184,8 +184,6 @@ CLI 插件内部调用 pytest，并把真实输出保存到 `ai-testflow-runs/la
 
 ```text
 docs/prd.md
-  -> docs/requirement-spec.md
-  -> docs/test-cases.md
   -> agents/ai-testflow-agent.yaml
   -> ai-testflow.yml
   -> python -m ai_testflow run-all

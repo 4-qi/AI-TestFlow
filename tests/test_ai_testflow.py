@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 
+from ai_testflow.agent_designer import design_requirements_from_prd, design_test_cases_from_requirements
 from ai_testflow.analyzer import analyze_prd, build_requirements, extract_requirement_rows, extract_test_case_rows
 from ai_testflow.config import load_config
 from ai_testflow.inspector import KNOWN_DEFECTS, run_inspection
@@ -127,6 +128,50 @@ def test_requirement_breakdown_merges_prd_and_spec_rows():
             "source": "docs/prd.md",
         }
     ]
+
+
+def test_agent_designs_requirements_and_test_cases_from_prd_analysis():
+    prd_analysis = {
+        "functional_requirements": [
+            {
+                "requirement_id": "PRD-FR-003",
+                "title": "用户名长度限制",
+                "description": "用户注册时，用户名长度必须大于等于 6 位。",
+            },
+            {
+                "requirement_id": "PRD-FR-011",
+                "title": "登录成功",
+                "description": "用户输入已注册用户名和正确密码时，系统应允许用户登录并进入首页。",
+            },
+        ],
+        "non_functional_requirements": [],
+        "interfaces": [],
+    }
+
+    requirements = design_requirements_from_prd(prd_analysis)
+    test_cases = design_test_cases_from_requirements(requirements)
+
+    assert requirements == [
+        {
+            "requirement_id": "PRD-FR-003",
+            "title": "用户名长度限制",
+            "description": "用户注册时，用户名长度必须大于等于 6 位。",
+            "module_id": "MOD-001",
+            "test_focus": "小于 6 位用户名注册失败",
+            "source": "docs/prd.md",
+            "generated_by": "ai_testflow_agent",
+        },
+        {
+            "requirement_id": "PRD-FR-011",
+            "title": "登录成功",
+            "description": "用户输入已注册用户名和正确密码时，系统应允许用户登录并进入首页。",
+            "module_id": "MOD-002",
+            "test_focus": "正确账号密码登录成功",
+            "source": "docs/prd.md",
+            "generated_by": "ai_testflow_agent",
+        },
+    ]
+    assert [item["test_case_id"] for item in test_cases] == ["TC-REG-003", "TC-LOGIN-001"]
 
 
 def test_test_case_design_parses_rows_and_generates_api_test_script():
