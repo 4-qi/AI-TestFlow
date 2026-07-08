@@ -50,8 +50,9 @@ def _agent_run(config_path: str) -> int:
     project_root = Path.cwd()
     config = load_config(config_path)
     try:
-        result = run_agent_workflow(config, project_root)
-    except RuntimeError as exc:
+        print("AI-TestFlow Agent workflow started.", flush=True)
+        result = run_agent_workflow(config, project_root, progress=_print_progress)
+    except (RuntimeError, ValueError) as exc:
         print(f"AI-TestFlow Agent workflow failed: {exc}")
         return 1
 
@@ -70,3 +71,7 @@ def _agent_run(config_path: str) -> int:
         print(f"Test case: {first.get('test_case_id')}")
     print(f"Output directory: {config.output_dir}")
     return 0
+
+
+def _print_progress(message: str) -> None:
+    print(f"[AI-TestFlow] {message}", flush=True)

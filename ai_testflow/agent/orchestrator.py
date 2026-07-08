@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from ..config import TestFlowConfig
 from ..pytest_runner import PytestResult
@@ -25,7 +25,11 @@ class AgentRunResult:
     pytest_result: PytestResult
 
 
-def run_agent_workflow(config: TestFlowConfig, project_root: Path) -> AgentRunResult:
+def run_agent_workflow(
+    config: TestFlowConfig,
+    project_root: Path,
+    progress: Callable[[str], None] | None = None,
+) -> AgentRunResult:
     output_dir = project_root / config.output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
     prompts_dir = Path(__file__).parent / "prompts"
@@ -36,9 +40,12 @@ def run_agent_workflow(config: TestFlowConfig, project_root: Path) -> AgentRunRe
         api_key_env=config.llm_api_key_env,
         base_url=config.llm_base_url,
     )
+    _emit(progress, f"Using LLM provider: {config.llm_provider}, model: {config.llm_model}")
     client = OpenAILlmClient(llm_settings)
 
+    _emit(progress, f"Reading PRD: {config.prd_path}")
     prd_text = (project_root / config.prd_path).read_text(encoding="utf-8")
+    _emit(progress, f"Reading backend source: {config.backend_source_path}")
     backend_source = (project_root / config.backend_source_path).read_text(encoding="utf-8")
 
     workflow_state: dict[str, Any] = {
@@ -48,15 +55,19 @@ def run_agent_workflow(config: TestFlowConfig, project_root: Path) -> AgentRunRe
         "source_files_read": [str(config.prd_path), str(config.backend_source_path)],
     }
 
+    _emit(progress, "PRD Agent: analyzing PRD")
     prd_analysis = run_prd_agent(client, _prompt(prompts_dir, "prd_agent.md"), prd_text)
     _mark_stage(workflow_state, "PRD Agent", "completed")
 
+    _emit(progress, "Requirement Agent: breaking down requirements and test points")
     requirement_breakdown = run_requirement_agent(client, _prompt(prompts_dir, "requirement_agent.md"), prd_analysis)
     _mark_stage(workflow_state, "Requirement Agent", "completed")
 
+    _emit(progress, "Test Case Agent: designing test cases")
     test_case_design = run_test_case_agent(client, _prompt(prompts_dir, "test_case_agent.md"), requirement_breakdown)
     _mark_stage(workflow_state, "Test Case Agent", "completed")
 
+    _emit(progress, "Script Agent: generating pytest and Playwright scripts")
     script_files = run_script_agent(
         client,
         _prompt(prompts_dir, "script_agent.md"),
@@ -66,6 +77,7 @@ def run_agent_workflow(config: TestFlowConfig, project_root: Path) -> AgentRunRe
     )
     _mark_stage(workflow_state, "Script Agent", "completed")
 
+    _emit(progress, "Execute Agent: running generated API and page tests")
     pytest_result, playwright_output = run_execute_agent(
         config.generated_pytest_command,
         config.playwright_command,
@@ -88,6 +100,7 @@ def run_agent_workflow(config: TestFlowConfig, project_root: Path) -> AgentRunRe
         },
     }
 
+    _emit(progress, "Analysis Agent: analyzing execution results")
     defect_analysis = run_analysis_agent(
         client,
         _prompt(prompts_dir, "analysis_agent.md"),
@@ -104,9 +117,11 @@ def run_agent_workflow(config: TestFlowConfig, project_root: Path) -> AgentRunRe
         "execution_result": execution_result,
         "defect_analysis": defect_analysis,
     }
+    _emit(progress, "Report Agent: generating test report")
     test_report = run_report_agent(client, _prompt(prompts_dir, "report_agent.md"), report_context)
     _mark_stage(workflow_state, "Report Agent", "completed")
 
+    _emit(progress, "Bug Agent: generating bug report")
     bug_report = run_bug_agent(client, _prompt(prompts_dir, "bug_agent.md"), report_context)
     _mark_stage(workflow_state, "Bug Agent", "completed")
 
@@ -139,7 +154,13 @@ def run_agent_workflow(config: TestFlowConfig, project_root: Path) -> AgentRunRe
         bug_report=bug_report,
         summary=summary,
     )
+    _emit(progress, f"Artifacts written to: {config.output_dir}")
     return AgentRunResult(summary=summary, output_files=output_files, pytest_result=pytest_result)
+
+
+def _emit(progress: Callable[[str], None] | None, message: str) -> None:
+    if progress:
+        progress(message)
 
 
 def _prompt(prompts_dir: Path, name: str) -> str:
