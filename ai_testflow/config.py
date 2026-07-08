@@ -26,6 +26,7 @@ class TestFlowConfig:
     llm_provider: str
     llm_model: str
     llm_api_key_env: str
+    llm_base_url: str | None
 
 
 REQUIRED_KEYS = {
@@ -74,7 +75,8 @@ def load_config(config_path: str | Path = "ai-testflow.yml") -> TestFlowConfig:
         test_report_path=Path(str(raw["test_report_path"])),
         bug_report_path=Path(str(raw["bug_report_path"])),
         output_dir=Path(str(raw["output_dir"])),
-        llm_provider=str(llm.get("provider", "openai")),
-        llm_model=str(llm.get("model", "gpt-4.1-mini")),
-        llm_api_key_env=str(llm.get("api_key_env", "OPENAI_API_KEY")),
+        llm_provider=str(llm.get("provider", "deepseek")),
+        llm_model=str(llm.get("model", "deepseek-v4-flash")),
+        llm_api_key_env=str(llm.get("api_key_env", "DEEPSEEK_API_KEY")),
+        llm_base_url=str(llm["base_url"]) if "base_url" in llm else None,
     )

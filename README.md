@@ -103,7 +103,7 @@ conda run -n AI-TestFlow python -m ai_testflow agent-run
 运行前必须配置：
 
 ```bash
-export OPENAI_API_KEY=你的 OpenAI API Key
+export DEEPSEEK_API_KEY=你的 DeepSeek API Key
 ```
 
 当前 Demo 中被发现的缺陷实例链路是：

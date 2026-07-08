@@ -20,10 +20,10 @@ conda run -n AI-TestFlow python -m ai_testflow agent-run
 运行前必须配置：
 
 ```bash
-export OPENAI_API_KEY=你的 OpenAI API Key
+export DEEPSEEK_API_KEY=你的 DeepSeek API Key
 ```
 
-如果未配置 `OPENAI_API_KEY`，`agent-run` 必须直接报错，不允许退回硬编码规则流程。
+如果未配置 `DEEPSEEK_API_KEY`，`agent-run` 必须直接报错，不允许退回硬编码规则流程。
 
 ## 3. 多 Agent 流程
 

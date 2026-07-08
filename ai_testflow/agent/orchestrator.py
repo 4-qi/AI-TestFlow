@@ -34,6 +34,7 @@ def run_agent_workflow(config: TestFlowConfig, project_root: Path) -> AgentRunRe
         provider=config.llm_provider,
         model=config.llm_model,
         api_key_env=config.llm_api_key_env,
+        base_url=config.llm_base_url,
     )
     client = OpenAILlmClient(llm_settings)
 

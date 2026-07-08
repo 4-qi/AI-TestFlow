@@ -1,8 +1,9 @@
 project_name: AI-TestFlow
 llm:
-  provider: openai
-  model: gpt-4.1-mini
-  api_key_env: OPENAI_API_KEY
+  provider: deepseek
+  model: deepseek-v4-flash
+  api_key_env: DEEPSEEK_API_KEY
+  base_url: https://api.deepseek.com
 prd_path: docs/prd.md
 requirement_spec_path: docs/samples/requirement-spec.sample.md
 test_cases_path: docs/samples/test-cases.sample.md
