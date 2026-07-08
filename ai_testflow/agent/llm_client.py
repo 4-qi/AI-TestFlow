@@ -53,7 +53,7 @@ class OpenAILlmClient:
                 }
             },
         )
-        return json.loads(response.output_text)
+        return _unwrap_named_object(name, json.loads(response.output_text))
 
     def _generate_deepseek_json(self, *, name: str, system_prompt: str, user_prompt: str, schema: dict[str, Any]) -> dict[str, Any]:
         schema_text = json.dumps(schema, ensure_ascii=False, indent=2)
@@ -78,4 +78,10 @@ class OpenAILlmClient:
         content = response.choices[0].message.content
         if not content:
             raise RuntimeError("DeepSeek returned empty JSON content")
-        return json.loads(content)
+        return _unwrap_named_object(name, json.loads(content))
+
+
+def _unwrap_named_object(name: str, data: dict[str, Any]) -> dict[str, Any]:
+    if name in data and isinstance(data[name], dict):
+        return data[name]
+    return data

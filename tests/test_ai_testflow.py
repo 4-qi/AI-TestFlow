@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from ai_testflow.agent.llm_client import LlmSettings, OpenAILlmClient
+from ai_testflow.agent.llm_client import LlmSettings, OpenAILlmClient, _unwrap_named_object
 from ai_testflow.agent.agents.script_agent import run_script_agent
 from ai_testflow.agent_designer import design_requirements_from_prd, design_test_cases_from_requirements
 from ai_testflow.analyzer import analyze_prd, build_requirements, extract_requirement_rows, extract_test_case_rows
@@ -80,6 +80,20 @@ def test_deepseek_llm_client_requires_api_key(monkeypatch):
                 base_url="https://api.deepseek.com",
             )
         )
+
+
+def test_llm_json_unwraps_named_object():
+    data = {
+        "prd_analysis": {
+            "business_goal": "验证登录注册 Demo",
+            "user_roles": ["未登录用户"],
+            "functional_requirements": [],
+            "non_functional_requirements": [],
+            "interface_scope": [],
+        }
+    }
+
+    assert _unwrap_named_object("prd_analysis", data) == data["prd_analysis"]
 
 
 def test_parse_pytest_result_extracts_failed_test_mapping():
