@@ -101,10 +101,36 @@ conda run --no-capture-output -n AI-TestFlow python -m ai_testflow agent-run
 10. Report Agent 生成测试报告。
 11. Bug Agent 生成 Bug 单。
 
-运行前必须配置：
+运行前必须配置 `.env`：
 
 ```bash
-export DEEPSEEK_API_KEY=你的 DeepSeek API Key
+cp .env.example .env
+```
+
+然后编辑 `.env`：
+
+```text
+DEEPSEEK_API_KEY=你的 DeepSeek API Key
+```
+
+默认模型在 `ai-testflow.yml` 中手动设置：
+
+```yaml
+llm:
+  provider: deepseek
+  model: deepseek-v4-pro
+  api_key_env: DEEPSEEK_API_KEY
+  base_url: https://api.deepseek.com
+```
+
+如果要切换模型，直接修改 `llm.model`，例如在 DeepSeek Pro 和 Flash 之间切换：
+
+```yaml
+model: deepseek-v4-pro
+```
+
+```yaml
+model: deepseek-v4-flash
 ```
 
 当前 Demo 中被发现的缺陷实例链路是：

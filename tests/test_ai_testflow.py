@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import pytest
 
-from ai_testflow.agent.llm_client import LlmSettings, OpenAILlmClient, _unwrap_named_object
+from ai_testflow.agent.llm_client import LlmSettings, OpenAILlmClient, _unwrap_named_object, load_env_file
 from ai_testflow.agent.agents.script_agent import run_script_agent
 from ai_testflow.agent.orchestrator import _filter_defects_to_failed_tests
 from ai_testflow.agent_designer import design_requirements_from_prd, design_test_cases_from_requirements
@@ -26,7 +27,7 @@ def test_load_config_reads_exact_paths():
     assert str(config.generated_tests_path) == "ai-testflow-runs/latest/generated_api_tests.py"
     assert str(config.generated_playwright_tests_path) == "frontend/generated-tests/generated_playwright_tests.spec.js"
     assert config.llm_provider == "deepseek"
-    assert config.llm_model == "deepseek-v4-flash"
+    assert config.llm_model == "deepseek-v4-pro"
     assert config.llm_api_key_env == "DEEPSEEK_API_KEY"
     assert config.llm_base_url == "https://api.deepseek.com"
     assert config.api_test_runtime == {"mode": "flask_app", "app_factory": "backend.app:create_app"}
@@ -59,25 +60,37 @@ def test_load_config_reads_exact_paths():
     ]
 
 
-def test_llm_client_requires_api_key(monkeypatch):
+def test_llm_client_requires_api_key(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
 
     with pytest.raises(RuntimeError, match="OPENAI_API_KEY is required for agent-run"):
         OpenAILlmClient(LlmSettings(provider="openai", model="gpt-4.1-mini", api_key_env="OPENAI_API_KEY"))
 
 
-def test_deepseek_llm_client_requires_api_key(monkeypatch):
+def test_deepseek_llm_client_requires_api_key(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
     monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
 
     with pytest.raises(RuntimeError, match="DEEPSEEK_API_KEY is required for agent-run"):
         OpenAILlmClient(
             LlmSettings(
                 provider="deepseek",
-                model="deepseek-v4-flash",
+                model="deepseek-v4-pro",
                 api_key_env="DEEPSEEK_API_KEY",
                 base_url="https://api.deepseek.com",
             )
         )
+
+
+def test_load_env_file_sets_missing_api_key(monkeypatch, tmp_path):
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    env_path = tmp_path / ".env"
+    env_path.write_text("DEEPSEEK_API_KEY=local-test-key\n", encoding="utf-8")
+
+    load_env_file(env_path)
+
+    assert os.environ["DEEPSEEK_API_KEY"] == "local-test-key"
 
 
 def test_llm_json_unwraps_named_object():
@@ -595,7 +608,7 @@ def test_run_inspection_writes_stable_summary(tmp_path, monkeypatch):
     config_text = """project_name: AI-TestFlow
 llm:
   provider: deepseek
-  model: deepseek-v4-flash
+  model: deepseek-v4-pro
   api_key_env: DEEPSEEK_API_KEY
   base_url: https://api.deepseek.com
 prd_path: docs/prd.md

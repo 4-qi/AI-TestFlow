@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 
@@ -18,6 +19,7 @@ class OpenAILlmClient:
     def __init__(self, settings: LlmSettings):
         if settings.provider not in {"openai", "deepseek"}:
             raise ValueError(f"Unsupported LLM provider: {settings.provider}")
+        load_env_file(Path(".env"))
         api_key = os.environ.get(settings.api_key_env)
         if not api_key:
             raise RuntimeError(f"{settings.api_key_env} is required for agent-run")
@@ -85,3 +87,17 @@ def _unwrap_named_object(name: str, data: dict[str, Any]) -> dict[str, Any]:
     if name in data and isinstance(data[name], dict):
         return data[name]
     return data
+
+
+def load_env_file(path: Path) -> None:
+    if not path.exists():
+        return
+    for line in path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
+            continue
+        key, value = stripped.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key:
+            os.environ.setdefault(key, value)
