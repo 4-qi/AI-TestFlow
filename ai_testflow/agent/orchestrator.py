@@ -7,7 +7,6 @@ from typing import Any, Callable
 
 from ..config import TestFlowConfig
 from ..pytest_runner import PytestResult
-from ..test_generator import generated_api_test_name
 from .agents.analysis_agent import run_analysis_agent
 from .agents.bug_agent import run_bug_agent
 from .agents.execute_agent import run_execute_agent
@@ -78,6 +77,7 @@ def run_agent_workflow(
         project_root / config.generated_tests_path,
         project_root / config.generated_playwright_tests_path,
         prd_text=prd_text,
+        review_prompt=_prompt(prompts_dir, "script_review_agent.md"),
     )
     _mark_stage(workflow_state, "Script Agent", "completed")
 
@@ -117,7 +117,6 @@ def run_agent_workflow(
         execution_result,
     )
     defect_analysis = _filter_defects_to_failed_tests(defect_analysis, pytest_result)
-    defect_analysis = _add_fallback_defects_for_failed_tests(defect_analysis, script_files["script_plan"], test_case_design, pytest_result)
     _mark_stage(workflow_state, "Analysis Agent", "completed")
 
     report_context = {
@@ -202,48 +201,6 @@ def _filter_defects_to_failed_tests(defect_analysis: dict[str, Any], pytest_resu
         if defect.get("failed_test_name") in failed_names
     ]
     return {"status": "has_defects" if defects else "passed", "defects": defects}
-
-
-def _add_fallback_defects_for_failed_tests(
-    defect_analysis: dict[str, Any],
-    script_plan: dict[str, Any],
-    test_case_design: dict[str, Any],
-    pytest_result: PytestResult,
-) -> dict[str, Any]:
-    if defect_analysis.get("defects") or not pytest_result.failed_test_names:
-        return defect_analysis
-
-    api_tests_by_name = {
-        generated_api_test_name(api_test, index): api_test
-        for index, api_test in enumerate(script_plan.get("api_tests", []), start=1)
-    }
-    test_cases_by_id = {
-        item["test_case_id"]: item
-        for item in test_case_design.get("test_cases", [])
-    }
-    defects: list[dict[str, Any]] = []
-    for index, failed_test_name in enumerate(pytest_result.failed_test_names, start=1):
-        api_test = api_tests_by_name.get(failed_test_name, {})
-        test_case = test_cases_by_id.get(api_test.get("test_case_id"), {})
-        defects.append(
-            {
-                "bug_id": f"BUG-AUTO-{index:03d}",
-                "title": test_case.get("title") or api_test.get("name") or failed_test_name,
-                "requirement_id": test_case.get("requirement_id", "UNKNOWN"),
-                "test_case_id": api_test.get("test_case_id", "UNKNOWN"),
-                "failed_test_name": failed_test_name,
-                "expected": f"HTTP {api_test.get('expected_status')} and JSON contains {api_test.get('expected_json_contains')}",
-                "actual": "Generated pytest failed; see pytest-output.txt for exact assertion details.",
-                "severity": "中",
-                "priority": test_case.get("priority", "P1"),
-                "reproduction_steps": [
-                    f"{api_test.get('method', 'UNKNOWN')} {api_test.get('path', 'UNKNOWN')}",
-                    f"Request JSON: {api_test.get('json_body', {})}",
-                ],
-            }
-        )
-
-    return {"status": "has_defects", "defects": defects}
 
 
 def _write_agent_outputs(

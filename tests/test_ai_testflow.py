@@ -6,8 +6,8 @@ from pathlib import Path
 import pytest
 
 from ai_testflow.agent.llm_client import LlmSettings, OpenAILlmClient, _unwrap_named_object
-from ai_testflow.agent.agents.script_agent import _align_api_expectations_with_test_cases, _stable_ui_tests, run_script_agent
-from ai_testflow.agent.orchestrator import _add_fallback_defects_for_failed_tests, _filter_defects_to_failed_tests
+from ai_testflow.agent.agents.script_agent import run_script_agent
+from ai_testflow.agent.orchestrator import _filter_defects_to_failed_tests
 from ai_testflow.agent_designer import design_requirements_from_prd, design_test_cases_from_requirements
 from ai_testflow.analyzer import analyze_prd, build_requirements, extract_requirement_rows, extract_test_case_rows
 from ai_testflow.cli import _print_agent_summary
@@ -397,228 +397,64 @@ def test_script_agent_uses_structured_plan_to_generate_scripts(tmp_path):
     assert "fill_label" in playwright_text
 
 
-def test_script_agent_aligns_negative_case_expectations():
-    script_plan = {
-        "api_tests": [
-            {
-                "test_case_id": "TC-003",
-                "name": "用户名长度小于6位",
-                "setup_api_actions": [],
-                "method": "POST",
-                "path": "/api/register",
-                "json_body": {
-                    "username": "abc",
-                    "password": "Test1234",
-                    "confirm_password": "Test1234",
-                },
-                "expected_status": 200,
-                "expected_json_contains": {
-                    "success": True,
-                },
+def test_script_agent_uses_review_agent_when_configured(tmp_path):
+    class FakeClient:
+        def __init__(self):
+            self.calls = []
+
+        def generate_json(self, **kwargs):
+            self.calls.append(kwargs["system_prompt"])
+            if len(self.calls) == 1:
+                return {
+                    "api_tests": [
+                        {
+                            "test_case_id": "TC-001",
+                            "name": "initial plan",
+                            "setup_api_actions": [],
+                            "method": "GET",
+                            "path": "/api/initial",
+                            "json_body": {},
+                            "expected_status": 200,
+                            "expected_json_contains": {},
+                        }
+                    ],
+                    "ui_tests": [],
+                }
+            return {
+                "api_tests": [
+                    {
+                        "test_case_id": "TC-001",
+                        "name": "reviewed plan",
+                        "setup_api_actions": [],
+                        "method": "GET",
+                        "path": "/api/reviewed",
+                        "json_body": {},
+                        "expected_status": 200,
+                        "expected_json_contains": {},
+                    }
+                ],
+                "ui_tests": [],
             }
-        ],
-        "ui_tests": [],
-    }
-    test_cases = [
-        {
-            "test_case_id": "TC-003",
-            "title": "用户名长度小于6位",
-            "precondition": "注册页面打开",
-            "steps": ["输入用户名 abc", "点击注册"],
-            "test_data": "username=abc",
-            "expected_result": "注册失败，后端API返回错误",
-        }
-    ]
 
-    aligned = _align_api_expectations_with_test_cases(script_plan, test_cases)
+    api_target = tmp_path / "generated_api_tests.py"
+    playwright_target = tmp_path / "generated_playwright_tests.spec.js"
+    client = FakeClient()
 
-    assert aligned["api_tests"][0]["expected_status"] == 400
-    assert aligned["api_tests"][0]["expected_json_contains"]["success"] is False
-
-
-def test_script_agent_drops_unanchored_negative_message_assertions():
-    script_plan = {
-        "api_tests": [
-            {
-                "test_case_id": "TC-012",
-                "name": "确认密码与密码不一致注册失败",
-                "setup_api_actions": [],
-                "method": "POST",
-                "path": "/api/register",
-                "json_body": {
-                    "username": "testuser",
-                    "password": "Test1234",
-                    "confirm_password": "Different",
-                },
-                "expected_status": 400,
-                "expected_json_contains": {
-                    "message": "确认密码与密码不一致",
-                },
-            }
-        ],
-        "ui_tests": [],
-    }
-    test_cases = [
-        {
-            "test_case_id": "TC-012",
-            "title": "确认密码与密码不一致注册失败",
-            "expected_result": "注册失败，提示确认密码与密码不一致",
-        }
-    ]
-
-    aligned = _align_api_expectations_with_test_cases(
-        script_plan,
-        test_cases,
-        "用户注册时，确认密码必须与密码一致。",
+    result = run_script_agent(
+        client,
+        "script prompt",
+        [{"test_case_id": "TC-001"}],
+        "backend source",
+        {"mode": "flask_app", "app_factory": "backend.app:create_app"},
+        api_target,
+        playwright_target,
+        prd_text="prd",
+        review_prompt="review prompt",
     )
 
-    assert aligned["api_tests"][0]["expected_json_contains"] == {}
-
-
-def test_script_agent_drops_unanchored_error_schema_assertions():
-    script_plan = {
-        "api_tests": [
-            {
-                "test_case_id": "TC-039",
-                "name": "错误响应格式验证",
-                "setup_api_actions": [],
-                "method": "POST",
-                "path": "/api/register",
-                "json_body": {
-                    "username": "",
-                    "password": "test",
-                },
-                "expected_status": 400,
-                "expected_json_contains": {
-                    "errorCode": "",
-                    "errorMessage": "",
-                },
-            }
-        ],
-        "ui_tests": [],
-    }
-    test_cases = [
-        {
-            "test_case_id": "TC-039",
-            "title": "错误响应格式验证",
-            "expected_result": "响应体为结构化错误信息",
-        }
-    ]
-
-    aligned = _align_api_expectations_with_test_cases(
-        script_plan,
-        test_cases,
-        "后端接口应返回结构化错误信息，便于前端展示和测试记录。",
-    )
-
-    assert aligned["api_tests"][0]["expected_json_contains"] == {}
-
-
-def test_script_agent_treats_blank_username_as_empty_when_backend_strips():
-    script_plan = {
-        "api_tests": [
-            {
-                "test_case_id": "TC-005",
-                "name": "注册-用户名为空格",
-                "setup_api_actions": [],
-                "method": "POST",
-                "path": "/api/register",
-                "json_body": {
-                    "username": " ",
-                    "password": "Test1234",
-                    "confirm_password": "Test1234",
-                },
-                "expected_status": 200,
-                "expected_json_contains": {
-                    "success": True,
-                },
-            }
-        ],
-        "ui_tests": [],
-    }
-    test_cases = [
-        {
-            "test_case_id": "TC-005",
-            "title": "注册-用户名为空格",
-            "expected_result": "注册成功",
-        }
-    ]
-
-    aligned = _align_api_expectations_with_test_cases(
-        script_plan,
-        test_cases,
-        "用户注册时，用户名不能为空。",
-        'username = str(payload.get("username", "")).strip()',
-    )
-
-    assert aligned["api_tests"][0]["expected_status"] == 400
-    assert aligned["api_tests"][0]["expected_json_contains"]["success"] is False
-
-
-def test_script_agent_keeps_only_stable_ui_smoke_tests():
-    ui_tests = [
-        {
-            "test_case_id": "TC-001",
-            "title": "注册页面元素显示",
-            "actions": [
-                {"action": "goto", "url": "/register"},
-                {"action": "expect_text", "text": "用户名"},
-            ],
-        },
-        {
-            "test_case_id": "TC-007",
-            "title": "短用户名注册失败",
-            "actions": [
-                {"action": "goto", "url": "/register"},
-                {"action": "fill_label", "label": "用户名", "value": "abc"},
-                {"action": "click_role", "role": "button", "name": "注册"},
-                {"action": "expect_text", "text": "用户名长度必须大于等于6位"},
-            ],
-        },
-    ]
-
-    stable_tests = _stable_ui_tests(ui_tests)
-
-    assert [item["test_case_id"] for item in stable_tests] == ["TC-001"]
-
-
-def test_script_agent_does_not_treat_precondition_absence_as_negative_case():
-    script_plan = {
-        "api_tests": [
-            {
-                "test_case_id": "TC-005",
-                "name": "用户名长度6位注册成功",
-                "setup_api_actions": [],
-                "method": "POST",
-                "path": "/api/register",
-                "json_body": {
-                    "username": "abcdef",
-                    "password": "valid123",
-                    "confirm_password": "valid123",
-                },
-                "expected_status": 200,
-                "expected_json_contains": {
-                    "success": True,
-                },
-            }
-        ],
-        "ui_tests": [],
-    }
-    test_cases = [
-        {
-            "test_case_id": "TC-005",
-            "title": "用户名长度6位注册成功",
-            "precondition": "新用户名 abcdef 不存在",
-            "steps": ["调用注册接口"],
-            "test_data": "username=abcdef",
-            "expected_result": "接口返回注册成功，状态码200",
-        }
-    ]
-
-    aligned = _align_api_expectations_with_test_cases(script_plan, test_cases)
-
-    assert aligned["api_tests"][0]["expected_status"] == 200
-    assert aligned["api_tests"][0]["expected_json_contains"]["success"] is True
+    assert client.calls == ["script prompt", "review prompt"]
+    assert result["script_plan"]["api_tests"][0]["path"] == "/api/reviewed"
+    assert "'path': '/api/reviewed'" in api_target.read_text(encoding="utf-8")
 
 
 def test_generated_api_tests_run_setup_actions(tmp_path):
@@ -657,57 +493,6 @@ def test_generated_api_tests_run_setup_actions(tmp_path):
 
     assert "for setup_action in case[\"setup_api_actions\"]" in script
     assert "'username': 'setupuser'" in script
-
-
-def test_fallback_defect_is_created_when_analysis_misses_failed_pytest():
-    pytest_result = parse_pytest_result(
-        ["pytest"],
-        1,
-        "FAILED generated_api_tests.py::test_generated_tc_003_short_username\n1 failed, 9 passed",
-        "",
-        "FAILED generated_api_tests.py::test_generated_tc_003_short_username\n1 failed, 9 passed",
-    )
-    script_plan = {
-        "api_tests": [
-            {
-                "test_case_id": "TC-003",
-                "name": "short username",
-                "setup_api_actions": [],
-                "method": "POST",
-                "path": "/api/register",
-                "json_body": {
-                    "username": "abc",
-                    "password": "Test1234",
-                    "confirm_password": "Test1234",
-                },
-                "expected_status": 400,
-                "expected_json_contains": {
-                    "success": False,
-                },
-            }
-        ]
-    }
-    test_case_design = {
-        "test_cases": [
-            {
-                "test_case_id": "TC-003",
-                "requirement_id": "REQ-003",
-                "title": "用户名长度小于6位时提交注册应提示错误",
-                "priority": "高",
-            }
-        ]
-    }
-
-    result = _add_fallback_defects_for_failed_tests(
-        {"status": "passed", "defects": []},
-        script_plan,
-        test_case_design,
-        pytest_result,
-    )
-
-    assert result["status"] == "has_defects"
-    assert result["defects"][0]["requirement_id"] == "REQ-003"
-    assert result["defects"][0]["test_case_id"] == "TC-003"
 
 
 def test_defect_filter_keeps_only_real_failed_tests():

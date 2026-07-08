@@ -95,10 +95,11 @@ conda run --no-capture-output -n AI-TestFlow python -m ai_testflow agent-run
 4. Requirement Agent 调用大模型拆测试点。
 5. Test Case Agent 调用大模型设计测试用例。
 6. Script Agent 生成 pytest 和 Playwright 脚本。
-7. Execute Agent 执行接口和页面自动化。
-8. Analysis Agent 判断缺陷。
-9. Report Agent 生成测试报告。
-10. Bug Agent 生成 Bug 单。
+7. Script Review Agent 基于 PRD、测试用例和源码审查脚本动作，修正无证据断言、缺失前置条件和不稳定定位。
+8. Execute Agent 执行接口和页面自动化。
+9. Analysis Agent 基于真实执行日志判断缺陷、测试脚本问题或环境问题。
+10. Report Agent 生成测试报告。
+11. Bug Agent 生成 Bug 单。
 
 运行前必须配置：
 
@@ -145,7 +146,7 @@ generated-bug-report.md
 frontend/generated-tests/generated_playwright_tests.spec.js
 ```
 
-说明：即使检测到 BUG-001，Agent 命令也会返回成功。这里的含义是“Agent 工作流执行成功，并发现产品缺陷”。真实测试执行结果请看 `inspection-summary.json` 中的 `pytest_exit_code`、`playwright_exit_code`、`failed_test_names` 和 `defects`。
+说明：Agent 不依赖登录注册 Demo 的固定规则。Demo 只是当前被测对象；测试点、测试用例、脚本动作和缺陷判断都来自 PRD、源码和真实执行日志。真实测试执行结果请看 `inspection-summary.json` 中的 `pytest_exit_code`、`playwright_exit_code`、`failed_test_names` 和 `defects`。
 
 ## 4. Agent 原型
 
