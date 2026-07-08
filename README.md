@@ -8,6 +8,7 @@
 
 ```text
 AI-TestFlow/
+  AI_TESTFLOW_ENTRYPOINT.md
   backend/
     app.py
     requirements.txt
@@ -26,6 +27,8 @@ AI-TestFlow/
     test-report.md
     bug-report.md
     plugin-prototype-design.md
+  prompts/
+    ai-testflow-inspection.md
 ```
 
 ## 2. 环境
@@ -144,6 +147,7 @@ PRD-FR-003 -> REG-002 -> AC-003 -> TC-REG-003 -> BUG-001
 
 | 文档 | 路径 |
 | --- | --- |
+| AI 检验流程入口 | `AI_TESTFLOW_ENTRYPOINT.md` |
 | 项目介绍 | `docs/project-introduction.md` |
 | 任务分析与流程 | `docs/task-analysis-and-workflow.md` |
 | PRD | `docs/prd.md` |
@@ -154,3 +158,17 @@ PRD-FR-003 -> REG-002 -> AC-003 -> TC-REG-003 -> BUG-001
 | 测试报告 | `docs/test-report.md` |
 | Bug 单 | `docs/bug-report.md` |
 | 插件原型设计 | `docs/plugin-prototype-design.md` |
+
+## 9. AI 检验入口
+
+如果要让 AI 按自动化测试插件流程检验本项目，从根目录入口开始：
+
+```text
+AI_TESTFLOW_ENTRYPOINT.md
+```
+
+可直接使用的提示词模板：
+
+```text
+prompts/ai-testflow-inspection.md
+```
