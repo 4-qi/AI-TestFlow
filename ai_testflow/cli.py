@@ -50,27 +50,54 @@ def _agent_run(config_path: str) -> int:
     project_root = Path.cwd()
     config = load_config(config_path)
     try:
-        print("AI-TestFlow Agent workflow started.", flush=True)
+        _print_agent_header(config_path, config.output_dir)
         result = run_agent_workflow(config, project_root, progress=_print_progress)
     except (RuntimeError, ValueError) as exc:
         print(f"AI-TestFlow Agent workflow failed: {exc}")
         return 1
 
-    print("AI-TestFlow Agent workflow completed.")
-    print(f"Status: {result.summary['status']}")
-    print(f"Requirements: {result.summary['requirements_count']}")
-    print(f"Test points: {result.summary['test_points_count']}")
-    print(f"Test cases: {result.summary['test_cases_count']}")
-    print(f"Passed tests: {result.summary['passed_tests']}")
-    print(f"Failed tests: {result.summary['failed_tests']}")
-    defects = result.summary.get("defects", [])
-    if defects:
-        first = defects[0]
-        print(f"Bug: {first.get('bug_id')}")
-        print(f"Requirement: {first.get('requirement_id')}")
-        print(f"Test case: {first.get('test_case_id')}")
-    print(f"Output directory: {config.output_dir}")
+    _print_agent_summary(result.summary, config.output_dir)
     return 0
+
+
+def _print_agent_header(config_path: str, output_dir: Path) -> None:
+    print("AI-TestFlow Agent Workflow", flush=True)
+    print(f"- Config: {config_path}", flush=True)
+    print(f"- Output directory: {output_dir}", flush=True)
+    print("", flush=True)
+
+
+def _print_agent_summary(summary: dict, output_dir: Path) -> None:
+    print("")
+    print("AI-TestFlow Result")
+    print(f"- Status: {summary['status']}")
+    print(f"- Requirements: {summary['requirements_count']}")
+    print(f"- Test points: {summary['test_points_count']}")
+    print(f"- Test cases: {summary['test_cases_count']}")
+    print(f"- Pytest exit code: {summary.get('pytest_exit_code')}")
+    print(f"- Passed tests: {summary['passed_tests']}")
+    print(f"- Failed tests: {summary['failed_tests']}")
+    failed_test_names = summary.get("failed_test_names", [])
+    if failed_test_names:
+        print("- Failed test names:")
+        for failed_test_name in failed_test_names:
+            print(f"  - {failed_test_name}")
+
+    defects = summary.get("defects", [])
+    if defects:
+        print("- Defects:")
+        for defect in defects:
+            bug_id = defect.get("bug_id")
+            requirement_id = defect.get("requirement_id")
+            test_case_id = defect.get("test_case_id")
+            failed_test_name = defect.get("failed_test_name")
+            detail = f"  - {bug_id} | requirement={requirement_id} | test_case={test_case_id}"
+            if failed_test_name:
+                detail += f" | failed_test={failed_test_name}"
+            print(detail)
+    else:
+        print("- Defects: none")
+    print(f"- Output directory: {output_dir}")
 
 
 def _print_progress(message: str) -> None:

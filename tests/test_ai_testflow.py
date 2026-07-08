@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -9,6 +10,7 @@ from ai_testflow.agent.agents.script_agent import _align_api_expectations_with_t
 from ai_testflow.agent.orchestrator import _add_fallback_defects_for_failed_tests
 from ai_testflow.agent_designer import design_requirements_from_prd, design_test_cases_from_requirements
 from ai_testflow.analyzer import analyze_prd, build_requirements, extract_requirement_rows, extract_test_case_rows
+from ai_testflow.cli import _print_agent_summary
 from ai_testflow.config import load_config
 from ai_testflow.inspector import KNOWN_DEFECTS, run_inspection
 from ai_testflow.pytest_runner import parse_pytest_result
@@ -96,6 +98,42 @@ def test_llm_json_unwraps_named_object():
     }
 
     assert _unwrap_named_object("prd_analysis", data) == data["prd_analysis"]
+
+
+def test_agent_summary_prints_readable_failed_tests_and_defects(capsys):
+    _print_agent_summary(
+        {
+            "status": "defects_found",
+            "requirements_count": 14,
+            "test_points_count": 15,
+            "test_cases_count": 16,
+            "pytest_exit_code": 1,
+            "passed_tests": 9,
+            "failed_tests": 1,
+            "failed_test_names": ["test_generated_register_short_username_rule"],
+            "defects": [
+                {
+                    "bug_id": "BUG-AUTO-001",
+                    "requirement_id": "REQ-003",
+                    "test_case_id": "TC-005",
+                    "failed_test_name": "test_generated_register_short_username_rule",
+                }
+            ],
+        },
+        Path("ai-testflow-runs/latest"),
+    )
+
+    output = capsys.readouterr().out
+
+    assert "AI-TestFlow Result" in output
+    assert "- Status: defects_found" in output
+    assert "- Pytest exit code: 1" in output
+    assert "- Failed test names:" in output
+    assert "  - test_generated_register_short_username_rule" in output
+    assert (
+        "  - BUG-AUTO-001 | requirement=REQ-003 | test_case=TC-005 "
+        "| failed_test=test_generated_register_short_username_rule"
+    ) in output
 
 
 def test_parse_pytest_result_extracts_failed_test_mapping():
