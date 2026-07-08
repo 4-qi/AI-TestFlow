@@ -82,7 +82,7 @@ def run_agent_workflow(
     _mark_stage(workflow_state, "Script Agent", "completed")
 
     _emit(progress, "[5/8] Execute Agent - running generated API and page tests")
-    pytest_result, playwright_output = run_execute_agent(
+    pytest_result, playwright_result = run_execute_agent(
         config.generated_pytest_command,
         config.playwright_command,
         project_root,
@@ -99,8 +99,12 @@ def run_agent_workflow(
             "output": pytest_result.combined_output,
         },
         "playwright": {
-            "command": config.playwright_command or [],
-            "output": playwright_output,
+            "command": playwright_result.command if playwright_result else config.playwright_command or [],
+            "exit_code": playwright_result.exit_code if playwright_result else 0,
+            "passed_tests": playwright_result.passed_tests if playwright_result else 0,
+            "failed_tests": playwright_result.failed_tests if playwright_result else 0,
+            "failed_test_names": playwright_result.failed_test_names if playwright_result else [],
+            "output": playwright_result.combined_output if playwright_result else "Playwright command not configured; generated script only.\n",
         },
     }
 
@@ -112,6 +116,7 @@ def run_agent_workflow(
         test_case_design,
         execution_result,
     )
+    defect_analysis = _filter_defects_to_failed_tests(defect_analysis, pytest_result)
     defect_analysis = _add_fallback_defects_for_failed_tests(defect_analysis, script_files["script_plan"], test_case_design, pytest_result)
     _mark_stage(workflow_state, "Analysis Agent", "completed")
 
@@ -132,7 +137,7 @@ def run_agent_workflow(
 
     if defect_analysis.get("defects"):
         status = "defects_found"
-    elif pytest_result.exit_code != 0:
+    elif pytest_result.exit_code != 0 or execution_result["playwright"]["exit_code"] != 0:
         status = "execution_failed"
     else:
         status = "passed"
@@ -144,9 +149,13 @@ def run_agent_workflow(
         "test_points_count": len(requirement_breakdown["test_points"]),
         "test_cases_count": len(test_case_design["test_cases"]),
         "pytest_exit_code": pytest_result.exit_code,
+        "playwright_exit_code": execution_result["playwright"]["exit_code"],
         "passed_tests": pytest_result.passed_tests,
         "failed_tests": pytest_result.failed_tests,
         "failed_test_names": pytest_result.failed_test_names,
+        "playwright_passed_tests": execution_result["playwright"]["passed_tests"],
+        "playwright_failed_tests": execution_result["playwright"]["failed_tests"],
+        "playwright_failed_test_names": execution_result["playwright"]["failed_test_names"],
         "defects": defect_analysis.get("defects", []),
         "output_dir": str(config.output_dir),
     }
@@ -180,6 +189,19 @@ def _prompt(prompts_dir: Path, name: str) -> str:
 
 def _mark_stage(workflow_state: dict[str, Any], stage: str, status: str) -> None:
     workflow_state["stages"].append({"stage": stage, "status": status})
+
+
+def _filter_defects_to_failed_tests(defect_analysis: dict[str, Any], pytest_result: PytestResult) -> dict[str, Any]:
+    failed_names = set(pytest_result.failed_test_names)
+    if not failed_names:
+        return {"status": "passed", "defects": []}
+
+    defects = [
+        defect
+        for defect in defect_analysis.get("defects", [])
+        if defect.get("failed_test_name") in failed_names
+    ]
+    return {"status": "has_defects" if defects else "passed", "defects": defects}
 
 
 def _add_fallback_defects_for_failed_tests(

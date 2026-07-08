@@ -77,10 +77,18 @@ def _print_agent_summary(summary: dict, output_dir: Path) -> None:
     print(f"- Pytest exit code: {summary.get('pytest_exit_code')}")
     print(f"- Passed tests: {summary['passed_tests']}")
     print(f"- Failed tests: {summary['failed_tests']}")
+    print(f"- Playwright exit code: {summary.get('playwright_exit_code')}")
+    print(f"- Playwright passed tests: {summary.get('playwright_passed_tests')}")
+    print(f"- Playwright failed tests: {summary.get('playwright_failed_tests')}")
     failed_test_names = summary.get("failed_test_names", [])
     if failed_test_names:
         print("- Failed test names:")
         for failed_test_name in failed_test_names:
+            print(f"  - {failed_test_name}")
+    playwright_failed_test_names = summary.get("playwright_failed_test_names", [])
+    if playwright_failed_test_names:
+        print("- Playwright failed test names:")
+        for failed_test_name in playwright_failed_test_names:
             print(f"  - {failed_test_name}")
 
     defects = summary.get("defects", [])

@@ -7,7 +7,7 @@ import pytest
 
 from ai_testflow.agent.llm_client import LlmSettings, OpenAILlmClient, _unwrap_named_object
 from ai_testflow.agent.agents.script_agent import _align_api_expectations_with_test_cases, run_script_agent
-from ai_testflow.agent.orchestrator import _add_fallback_defects_for_failed_tests
+from ai_testflow.agent.orchestrator import _add_fallback_defects_for_failed_tests, _filter_defects_to_failed_tests
 from ai_testflow.agent_designer import design_requirements_from_prd, design_test_cases_from_requirements
 from ai_testflow.analyzer import analyze_prd, build_requirements, extract_requirement_rows, extract_test_case_rows
 from ai_testflow.cli import _print_agent_summary
@@ -24,22 +24,16 @@ def test_load_config_reads_exact_paths():
     assert str(config.prd_path) == "docs/prd.md"
     assert str(config.output_dir) == "ai-testflow-runs/latest"
     assert str(config.generated_tests_path) == "ai-testflow-runs/latest/generated_api_tests.py"
-    assert str(config.generated_playwright_tests_path) == "ai-testflow-runs/latest/generated_playwright_tests.spec.js"
+    assert str(config.generated_playwright_tests_path) == "frontend/generated-tests/generated_playwright_tests.spec.js"
     assert config.llm_provider == "deepseek"
     assert config.llm_model == "deepseek-v4-flash"
     assert config.llm_api_key_env == "DEEPSEEK_API_KEY"
     assert config.llm_base_url == "https://api.deepseek.com"
     assert config.api_test_runtime == {"mode": "flask_app", "app_factory": "backend.app:create_app"}
     assert config.playwright_command == [
-        "npm",
-        "--prefix",
-        "frontend",
-        "exec",
-        "playwright",
-        "test",
-        "../ai-testflow-runs/latest/generated_playwright_tests.spec.js",
-        "--config",
-        "playwright.config.js",
+        "bash",
+        "-lc",
+        "cd frontend && npm exec playwright test generated-tests/generated_playwright_tests.spec.js --config playwright.config.js",
     ]
     assert config.pytest_command == [
         "conda",
@@ -108,9 +102,13 @@ def test_agent_summary_prints_readable_failed_tests_and_defects(capsys):
             "test_points_count": 15,
             "test_cases_count": 16,
             "pytest_exit_code": 1,
+            "playwright_exit_code": 0,
             "passed_tests": 9,
             "failed_tests": 1,
             "failed_test_names": ["test_generated_register_short_username_rule"],
+            "playwright_passed_tests": 4,
+            "playwright_failed_tests": 0,
+            "playwright_failed_test_names": [],
             "defects": [
                 {
                     "bug_id": "BUG-AUTO-001",
@@ -128,6 +126,7 @@ def test_agent_summary_prints_readable_failed_tests_and_defects(capsys):
     assert "AI-TestFlow Result" in output
     assert "- Status: defects_found" in output
     assert "- Pytest exit code: 1" in output
+    assert "- Playwright exit code: 0" in output
     assert "- Failed test names:" in output
     assert "  - test_generated_register_short_username_rule" in output
     assert (
@@ -318,7 +317,7 @@ def test_generated_playwright_tests_render_generic_ui_actions():
 
     generated_script = render_generated_playwright_tests(ui_tests)
 
-    assert "../../frontend/node_modules/@playwright/test" in generated_script
+    assert "from '@playwright/test'" in generated_script
     assert "const cases =" in generated_script
     assert "fill_label" in generated_script
     assert "expect_text" in generated_script
@@ -638,6 +637,56 @@ def test_fallback_defect_is_created_when_analysis_misses_failed_pytest():
     assert result["status"] == "has_defects"
     assert result["defects"][0]["requirement_id"] == "REQ-003"
     assert result["defects"][0]["test_case_id"] == "TC-003"
+
+
+def test_defect_filter_keeps_only_real_failed_tests():
+    pytest_result = parse_pytest_result(
+        ["pytest"],
+        1,
+        (
+            "FAILED generated_api_tests.py::test_generated_tc_004__6_abc\n"
+            "1 failed, 14 passed"
+        ),
+        "",
+        (
+            "FAILED generated_api_tests.py::test_generated_tc_004__6_abc\n"
+            "1 failed, 14 passed"
+        ),
+    )
+    defect_analysis = {
+        "status": "has_defects",
+        "defects": [
+            {
+                "bug_id": "BUG-001",
+                "title": "短用户名注册成功",
+                "requirement_id": "PRD-FR-003",
+                "test_case_id": "TC-004",
+                "failed_test_name": "test_generated_tc_004__6_abc",
+                "expected": "HTTP 400",
+                "actual": "HTTP 200",
+                "severity": "高",
+                "priority": "高",
+                "reproduction_steps": ["POST /api/register"],
+            },
+            {
+                "bug_id": "BUG-002",
+                "title": "未失败测试不应进入 Bug",
+                "requirement_id": "PRD-FR-010",
+                "test_case_id": "TC-025",
+                "failed_test_name": "test_generated_tc_025",
+                "expected": "HTTP 401",
+                "actual": "HTTP 401",
+                "severity": "中",
+                "priority": "中",
+                "reproduction_steps": ["POST /api/login"],
+            },
+        ],
+    }
+
+    result = _filter_defects_to_failed_tests(defect_analysis, pytest_result)
+
+    assert result["status"] == "has_defects"
+    assert [item["bug_id"] for item in result["defects"]] == ["BUG-001"]
 
 
 def test_known_defect_maps_short_username_failure_to_bug():

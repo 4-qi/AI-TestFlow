@@ -12,6 +12,7 @@ backend/instance/
 *.db
 
 ai-testflow-runs/
+frontend/generated-tests/
 test-results/
 
 .env

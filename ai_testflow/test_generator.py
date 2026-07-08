@@ -158,7 +158,7 @@ def _assert_json_contains(actual, expected):
 '''
 
 
-PLAYWRIGHT_HEADER = """import { test, expect } from '../../frontend/node_modules/@playwright/test';
+PLAYWRIGHT_HEADER = """import { test, expect } from '@playwright/test';
 """
 
 

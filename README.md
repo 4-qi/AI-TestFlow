@@ -132,7 +132,6 @@ test-cases.json
 script-plan.json
 pytest-output.txt
 generated_api_tests.py
-generated_playwright_tests.spec.js
 playwright-output.txt
 execution-result.json
 defect-analysis.json
@@ -140,7 +139,13 @@ generated-test-report.md
 generated-bug-report.md
 ```
 
-说明：即使检测到 BUG-001，Agent 命令也会返回成功。这里的含义是“Agent 工作流执行成功，并发现产品缺陷”。
+页面自动化脚本生成到：
+
+```text
+frontend/generated-tests/generated_playwright_tests.spec.js
+```
+
+说明：即使检测到 BUG-001，Agent 命令也会返回成功。这里的含义是“Agent 工作流执行成功，并发现产品缺陷”。真实测试执行结果请看 `inspection-summary.json` 中的 `pytest_exit_code`、`playwright_exit_code`、`failed_test_names` 和 `defects`。
 
 ## 4. Agent 原型
 

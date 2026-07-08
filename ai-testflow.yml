@@ -33,17 +33,11 @@ generated_pytest_command:
   - pytest
   - -q
   - ai-testflow-runs/latest/generated_api_tests.py
-generated_playwright_tests_path: ai-testflow-runs/latest/generated_playwright_tests.spec.js
+generated_playwright_tests_path: frontend/generated-tests/generated_playwright_tests.spec.js
 playwright_command:
-  - npm
-  - --prefix
-  - frontend
-  - exec
-  - playwright
-  - test
-  - ../ai-testflow-runs/latest/generated_playwright_tests.spec.js
-  - --config
-  - playwright.config.js
+  - bash
+  - -lc
+  - cd frontend && npm exec playwright test generated-tests/generated_playwright_tests.spec.js --config playwright.config.js
 api_execution_report_path: docs/api-test-execution.md
 test_report_path: docs/samples/test-report.sample.md
 bug_report_path: docs/samples/bug-report.sample.md
