@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import json
 
+from ai_testflow.analyzer import analyze_prd, build_requirements, extract_requirement_rows, extract_test_case_rows
 from ai_testflow.config import load_config
 from ai_testflow.inspector import KNOWN_DEFECTS, run_inspection
 from ai_testflow.pytest_runner import parse_pytest_result
+from ai_testflow.test_generator import render_generated_api_tests
 
 
 def test_load_config_reads_exact_paths():
@@ -50,6 +52,109 @@ FAILED backend/tests/test_api.py::test_register_rejects_short_username_by_requir
     assert result.passed_tests == 11
     assert result.failed_tests == 1
     assert result.failed_test_names == ["test_register_rejects_short_username_by_requirement"]
+
+
+def test_analyze_prd_extracts_requirements_and_interfaces():
+    prd_text = """
+### PRD-FR-003 用户名长度限制
+
+用户注册时，用户名长度必须大于等于 6 位。
+
+### PRD-NFR-001 响应时间
+
+接口响应时间应满足 Demo 验证需要。
+
+| 接口 | 方法 | 说明 |
+| --- | --- | --- |
+| `/api/register` | POST | 注册用户 |
+"""
+
+    analysis = analyze_prd(prd_text)
+
+    assert analysis["functional_requirements"] == [
+        {
+            "requirement_id": "PRD-FR-003",
+            "title": "用户名长度限制",
+            "description": "用户注册时，用户名长度必须大于等于 6 位。",
+        }
+    ]
+    assert analysis["non_functional_requirements"] == [
+        {
+            "requirement_id": "PRD-NFR-001",
+            "title": "响应时间",
+            "description": "接口响应时间应满足 Demo 验证需要。",
+        }
+    ]
+    assert analysis["interfaces"] == [{"path": "/api/register", "method": "POST", "description": "注册用户"}]
+
+
+def test_requirement_breakdown_merges_prd_and_spec_rows():
+    prd_analysis = {
+        "functional_requirements": [
+            {
+                "requirement_id": "PRD-FR-003",
+                "title": "用户名长度限制",
+                "description": "用户注册时，用户名长度必须大于等于 6 位。",
+            }
+        ],
+        "non_functional_requirements": [],
+        "interfaces": [],
+    }
+    requirement_spec = """
+| 需求编号 | 所属模块 | 需求描述 | 测试重点 |
+| --- | --- | --- | --- |
+| PRD-FR-003 | MOD-001 | 用户名长度必须大于等于 6 位 | 小于 6 位用户名注册失败 |
+"""
+
+    requirement_rows = extract_requirement_rows(requirement_spec)
+    requirements = build_requirements(prd_analysis, requirement_rows)
+
+    assert requirement_rows == [
+        {
+            "requirement_id": "PRD-FR-003",
+            "module_id": "MOD-001",
+            "description": "用户名长度必须大于等于 6 位",
+            "test_focus": "小于 6 位用户名注册失败",
+        }
+    ]
+    assert requirements == [
+        {
+            "requirement_id": "PRD-FR-003",
+            "title": "用户名长度限制",
+            "description": "用户注册时，用户名长度必须大于等于 6 位。",
+            "module_id": "MOD-001",
+            "test_focus": "小于 6 位用户名注册失败",
+            "source": "docs/prd.md",
+        }
+    ]
+
+
+def test_test_case_design_parses_rows_and_generates_api_test_script():
+    test_cases_doc = """
+| 用例编号 | 关联需求 | 标题 | 前置条件 | 测试数据 | 期望结果 | 优先级 |
+| --- | --- | --- | --- | --- | --- | --- |
+| TC-REG-003 | PRD-FR-003 | 用户名长度小于 6 位注册失败 | 用户名未存在 | `username=abc` | 注册失败，提示 `用户名长度不能少于6位` | P0 |
+"""
+
+    test_cases = extract_test_case_rows(test_cases_doc)
+    generated_script = render_generated_api_tests(test_cases)
+
+    assert test_cases == [
+        {
+            "test_case_id": "TC-REG-003",
+            "requirement_id": "PRD-FR-003",
+            "title": "用户名长度小于 6 位注册失败",
+            "precondition": "用户名未存在",
+            "test_data": "`username=abc`",
+            "expected_result": "注册失败，提示 `用户名长度不能少于6位`",
+            "priority": "P0",
+        }
+    ]
+    assert "def test_generated_register_rejects_short_username(client):" in generated_script
+    assert '"username": "abc"' in generated_script
+    assert "assert response.status_code == 400" in generated_script
+    assert 'assert response.get_json()["message"] == "用户名长度不能少于6位"' in generated_script
+    assert "def test_generated_register_success(client):" not in generated_script
 
 
 def test_known_defect_maps_short_username_failure_to_bug():

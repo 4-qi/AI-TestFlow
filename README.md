@@ -239,7 +239,7 @@ conda run -n AI-TestFlow python -m pytest -q tests
 已验证结果：
 
 ```text
-4 passed
+7 passed
 ```
 
 ## 10. 预埋缺陷
