@@ -24,8 +24,20 @@ Read these paths through `ai-testflow.yml`:
 3. Read `ai-testflow-runs/latest/inspection-summary.json`.
 4. Read `ai-testflow-runs/latest/traceability.json`.
 5. Read `ai-testflow-runs/latest/pytest-output.txt`.
-6. Read `ai-testflow-runs/latest/generated-test-report.md` when the user asks for the generated report.
-7. Read `ai-testflow-runs/latest/generated-bug-report.md` when the user asks for the generated Bug.
+6. Read `ai-testflow-runs/latest/requirements.json`.
+7. Read `ai-testflow-runs/latest/generated-test-cases.md`.
+8. Read `ai-testflow-runs/latest/generated-test-report.md` when the user asks for the generated report.
+9. Read `ai-testflow-runs/latest/generated-bug-report.md` when the user asks for the generated Bug.
+
+## One-Stop Workflow Stages
+
+The skill represents these stages:
+
+```text
+PRD分析 -> 需求拆解 -> 测试用例设计 -> 用例执行 -> 测试报告生成 -> 自动提Bug
+```
+
+`inspection-summary.json` contains `workflow_stages`. Use those stages to explain what the AI component completed.
 
 ## Success Criteria
 
@@ -35,9 +47,10 @@ The skill execution is successful when:
 2. `inspection-summary.json` exists.
 3. `traceability.json` exists.
 4. `pytest-output.txt` exists.
-5. `inspection-summary.json` contains `status` equal to `defects_found`.
+5. `inspection-summary.json` contains `workflow_stages`.
+6. `traceability.json` contains `requirements`, `test_cases`, and `defects`.
 
-The project is not defect-free. The known defect is expected and should be reported.
+The current Demo is not defect-free. The known Demo defect is expected and should be reported as one item in `defects`.
 
 ## Do Not Do
 
@@ -46,4 +59,4 @@ The project is not defect-free. The known defect is expected and should be repor
 3. Do not invent a different Bug ID.
 4. Do not change application code while running the skill.
 5. Do not fix `BUG-001` unless the user explicitly asks to repair the Demo bug.
-
+6. Do not present `BUG-001` as the only kind of defect the workflow can explain; it is the current Demo instance.

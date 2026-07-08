@@ -1,13 +1,224 @@
 {
-  "requirement_id": "PRD-FR-003",
-  "rule_id": "REG-002",
-  "acceptance_id": "AC-003",
-  "test_case_id": "TC-REG-003",
-  "bug_id": "BUG-001",
-  "failed_test_name": "test_register_rejects_short_username_by_requirement",
-  "expected": "用户名长度小于 6 位时注册失败，HTTP 400",
-  "actual": "用户名长度小于 6 位时注册成功，HTTP 200",
   "status": "failed",
+  "requirements": [
+    {
+      "requirement_id": "PRD-FR-001",
+      "module_id": "MOD-001",
+      "description": "注册页面展示",
+      "test_focus": "页面元素完整性"
+    },
+    {
+      "requirement_id": "PRD-FR-002",
+      "module_id": "MOD-001",
+      "description": "用户名必填",
+      "test_focus": "空用户名注册失败"
+    },
+    {
+      "requirement_id": "PRD-FR-003",
+      "module_id": "MOD-001",
+      "description": "用户名长度必须大于等于 6 位",
+      "test_focus": "小于 6 位用户名注册失败"
+    },
+    {
+      "requirement_id": "PRD-FR-004",
+      "module_id": "MOD-001",
+      "description": "密码必填",
+      "test_focus": "空密码注册失败"
+    },
+    {
+      "requirement_id": "PRD-FR-005",
+      "module_id": "MOD-001",
+      "description": "确认密码一致",
+      "test_focus": "两次密码不一致注册失败"
+    },
+    {
+      "requirement_id": "PRD-FR-006",
+      "module_id": "MOD-001",
+      "description": "用户名唯一",
+      "test_focus": "重复用户名注册失败"
+    },
+    {
+      "requirement_id": "PRD-FR-007",
+      "module_id": "MOD-001",
+      "description": "注册成功",
+      "test_focus": "合法输入注册成功"
+    },
+    {
+      "requirement_id": "PRD-FR-008",
+      "module_id": "MOD-002",
+      "description": "登录页面展示",
+      "test_focus": "页面元素完整性"
+    },
+    {
+      "requirement_id": "PRD-FR-009",
+      "module_id": "MOD-002",
+      "description": "登录账号校验",
+      "test_focus": "未注册用户登录失败"
+    },
+    {
+      "requirement_id": "PRD-FR-010",
+      "module_id": "MOD-002",
+      "description": "登录密码校验",
+      "test_focus": "密码错误登录失败"
+    },
+    {
+      "requirement_id": "PRD-FR-011",
+      "module_id": "MOD-002",
+      "description": "登录成功",
+      "test_focus": "正确账号密码登录成功"
+    },
+    {
+      "requirement_id": "PRD-FR-012",
+      "module_id": "MOD-002",
+      "description": "登录失败提示",
+      "test_focus": "错误信息可读"
+    },
+    {
+      "requirement_id": "PRD-FR-013",
+      "module_id": "MOD-003",
+      "description": "首页展示当前登录用户名",
+      "test_focus": "登录态展示"
+    },
+    {
+      "requirement_id": "PRD-FR-014",
+      "module_id": "MOD-003",
+      "description": "退出登录",
+      "test_focus": "登录态清除"
+    }
+  ],
+  "test_cases": [
+    {
+      "test_case_id": "TC-REG-001",
+      "requirement_id": "PRD-FR-007",
+      "title": "合法用户注册成功",
+      "precondition": "用户名未存在",
+      "test_data": "`username=testuser`, `password=Password123`, `confirm_password=Password123`",
+      "expected_result": "注册成功，返回用户名 `testuser`",
+      "priority": "P0"
+    },
+    {
+      "test_case_id": "TC-REG-002",
+      "requirement_id": "PRD-FR-002",
+      "title": "用户名为空注册失败",
+      "precondition": "无",
+      "test_data": "`username=`, `password=Password123`, `confirm_password=Password123`",
+      "expected_result": "注册失败，提示 `用户名不能为空`",
+      "priority": "P0"
+    },
+    {
+      "test_case_id": "TC-REG-003",
+      "requirement_id": "PRD-FR-003",
+      "title": "用户名长度小于 6 位注册失败",
+      "precondition": "用户名未存在",
+      "test_data": "`username=abc`, `password=Password123`, `confirm_password=Password123`",
+      "expected_result": "注册失败，提示 `用户名长度不能少于6位`",
+      "priority": "P0"
+    },
+    {
+      "test_case_id": "TC-REG-004",
+      "requirement_id": "PRD-FR-004",
+      "title": "密码为空注册失败",
+      "precondition": "无",
+      "test_data": "`username=testuser`, `password=`, `confirm_password=`",
+      "expected_result": "注册失败，提示 `密码不能为空`",
+      "priority": "P0"
+    },
+    {
+      "test_case_id": "TC-REG-005",
+      "requirement_id": "PRD-FR-005",
+      "title": "确认密码不一致注册失败",
+      "precondition": "无",
+      "test_data": "`username=testuser`, `password=Password123`, `confirm_password=Password456`",
+      "expected_result": "注册失败，提示 `两次输入的密码不一致`",
+      "priority": "P0"
+    },
+    {
+      "test_case_id": "TC-REG-006",
+      "requirement_id": "PRD-FR-006",
+      "title": "重复用户名注册失败",
+      "precondition": "`testuser` 已注册",
+      "test_data": "`username=testuser`, `password=Password123`, `confirm_password=Password123`",
+      "expected_result": "注册失败，提示 `用户名已存在`",
+      "priority": "P0"
+    },
+    {
+      "test_case_id": "TC-LOGIN-001",
+      "requirement_id": "PRD-FR-011",
+      "title": "正确账号密码登录成功",
+      "precondition": "`testuser` 已注册",
+      "test_data": "`username=testuser`, `password=Password123`",
+      "expected_result": "登录成功，返回用户名 `testuser`",
+      "priority": "P0"
+    },
+    {
+      "test_case_id": "TC-LOGIN-002",
+      "requirement_id": "PRD-FR-010",
+      "title": "密码错误登录失败",
+      "precondition": "`testuser` 已注册",
+      "test_data": "`username=testuser`, `password=WrongPassword`",
+      "expected_result": "登录失败，提示 `用户名或密码错误`",
+      "priority": "P0"
+    },
+    {
+      "test_case_id": "TC-LOGIN-003",
+      "requirement_id": "PRD-FR-009",
+      "title": "未注册用户登录失败",
+      "precondition": "用户名未注册",
+      "test_data": "`username=missinguser`, `password=Password123`",
+      "expected_result": "登录失败，提示 `用户名或密码错误`",
+      "priority": "P0"
+    },
+    {
+      "test_case_id": "TC-ME-001",
+      "requirement_id": "PRD-FR-013",
+      "title": "未登录访问当前用户失败",
+      "precondition": "未登录",
+      "test_data": "无",
+      "expected_result": "获取失败，提示 `用户未登录`",
+      "priority": "P1"
+    },
+    {
+      "test_case_id": "TC-ME-002",
+      "requirement_id": "PRD-FR-013",
+      "title": "登录后获取当前用户成功",
+      "precondition": "`testuser` 已登录",
+      "test_data": "无",
+      "expected_result": "获取成功，返回用户名 `testuser`",
+      "priority": "P1"
+    },
+    {
+      "test_case_id": "TC-LOGOUT-001",
+      "requirement_id": "PRD-FR-014",
+      "title": "退出登录后清除登录态",
+      "precondition": "`testuser` 已登录",
+      "test_data": "无",
+      "expected_result": "退出成功，再访问当前用户接口提示 `用户未登录`",
+      "priority": "P1"
+    }
+  ],
+  "defects": [
+    {
+      "requirement_id": "PRD-FR-003",
+      "rule_id": "REG-002",
+      "acceptance_id": "AC-003",
+      "test_case_id": "TC-REG-003",
+      "bug_id": "BUG-001",
+      "failed_test_name": "test_register_rejects_short_username_by_requirement",
+      "expected": "用户名长度小于 6 位时注册失败，HTTP 400",
+      "actual": "用户名长度小于 6 位时注册成功，HTTP 200",
+      "title": "注册接口未校验用户名长度，短用户名可注册成功"
+    }
+  ],
+  "demo_traceability_example": {
+    "requirement_id": "PRD-FR-003",
+    "rule_id": "REG-002",
+    "acceptance_id": "AC-003",
+    "test_case_id": "TC-REG-003",
+    "bug_id": "BUG-001",
+    "failed_test_name": "test_register_rejects_short_username_by_requirement",
+    "expected": "用户名长度小于 6 位时注册失败，HTTP 400",
+    "actual": "用户名长度小于 6 位时注册成功，HTTP 200"
+  },
   "source_files_read": [
     "backend/app.py",
     "backend/tests/test_api.py",

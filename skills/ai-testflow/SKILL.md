@@ -13,10 +13,10 @@ Use this skill as the dedicated AI component for the AI-TestFlow project. The sk
 
 1. Read `ai-testflow.yml` to get exact paths and commands.
 2. Read `references/workflow.md` for the end-to-end execution contract.
-3. Read `references/traceability.md` before explaining any defect.
+3. Read `references/traceability.md` before explaining defect mappings.
 4. Run `scripts/run_ai_testflow.py` from the repository root to execute the CLI plugin.
 5. Inspect generated outputs under `ai-testflow-runs/latest/`.
-6. Explain results using the exact IDs from the traceability file.
+6. Explain the full workflow stages and then explain each defect in `traceability.json`.
 
 Do not infer identifiers, paths, fields, or test names. If a required file is missing, report the missing path and stop.
 
@@ -40,8 +40,10 @@ After a successful skill run, these files must exist:
 
 ```text
 ai-testflow-runs/latest/inspection-summary.json
+ai-testflow-runs/latest/requirements.json
 ai-testflow-runs/latest/pytest-output.txt
 ai-testflow-runs/latest/traceability.json
+ai-testflow-runs/latest/generated-test-cases.md
 ai-testflow-runs/latest/generated-test-report.md
 ai-testflow-runs/latest/generated-bug-report.md
 ```
@@ -53,15 +55,16 @@ The CLI command should exit successfully even when it detects the known product 
 When reporting to the user:
 
 1. State whether the skill/CLI execution completed.
-2. Report `status`, `passed_tests`, `failed_tests`, `bug_id`, `requirement_id`, and `test_case_id` from `inspection-summary.json`.
+2. Report `status`, `requirements_count`, `test_cases_count`, `passed_tests`, `failed_tests`, and `defects` from `inspection-summary.json`.
 3. Mention the failing pytest test from `pytest-output.txt`.
-4. Explain the traceability chain exactly:
+4. Explain the one-stop workflow stages from `inspection-summary.json`.
+5. Explain each item in `traceability.json` under `defects`.
+6. For the current Demo defect, use this exact example chain:
 
 ```text
 PRD-FR-003 -> REG-002 -> AC-003 -> TC-REG-003 -> BUG-001
 ```
 
-5. Distinguish the tool result from the product result:
+7. Distinguish the tool result from the product result:
    - Tool result: CLI/skill execution completed.
    - Product result: known login/register Demo defect found.
-

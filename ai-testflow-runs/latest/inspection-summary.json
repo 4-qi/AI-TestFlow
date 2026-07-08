@@ -2,13 +2,60 @@
   "project_name": "AI-TestFlow",
   "status": "defects_found",
   "pytest_exit_code": 1,
+  "requirements_count": 14,
+  "test_cases_count": 12,
   "passed_tests": 11,
   "failed_tests": 1,
   "failed_test_names": [
     "test_register_rejects_short_username_by_requirement"
   ],
+  "defects": [
+    {
+      "requirement_id": "PRD-FR-003",
+      "rule_id": "REG-002",
+      "acceptance_id": "AC-003",
+      "test_case_id": "TC-REG-003",
+      "bug_id": "BUG-001",
+      "failed_test_name": "test_register_rejects_short_username_by_requirement",
+      "expected": "用户名长度小于 6 位时注册失败，HTTP 400",
+      "actual": "用户名长度小于 6 位时注册成功，HTTP 200",
+      "title": "注册接口未校验用户名长度，短用户名可注册成功"
+    }
+  ],
   "bug_id": "BUG-001",
   "requirement_id": "PRD-FR-003",
   "test_case_id": "TC-REG-003",
+  "workflow_stages": [
+    {
+      "stage": "PRD分析",
+      "status": "completed",
+      "output": "需求原文已读取"
+    },
+    {
+      "stage": "需求拆解",
+      "status": "completed",
+      "output": 14
+    },
+    {
+      "stage": "测试用例设计",
+      "status": "completed",
+      "output": 12
+    },
+    {
+      "stage": "用例执行",
+      "status": "completed",
+      "output": 12
+    },
+    {
+      "stage": "测试报告生成",
+      "status": "completed",
+      "output": "generated-test-report.md"
+    },
+    {
+      "stage": "自动提Bug",
+      "status": "completed",
+      "output": 1
+    }
+  ],
   "output_dir": "ai-testflow-runs/latest"
 }

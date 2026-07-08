@@ -1,0 +1,86 @@
+[
+  {
+    "requirement_id": "PRD-FR-001",
+    "module_id": "MOD-001",
+    "description": "注册页面展示",
+    "test_focus": "页面元素完整性"
+  },
+  {
+    "requirement_id": "PRD-FR-002",
+    "module_id": "MOD-001",
+    "description": "用户名必填",
+    "test_focus": "空用户名注册失败"
+  },
+  {
+    "requirement_id": "PRD-FR-003",
+    "module_id": "MOD-001",
+    "description": "用户名长度必须大于等于 6 位",
+    "test_focus": "小于 6 位用户名注册失败"
+  },
+  {
+    "requirement_id": "PRD-FR-004",
+    "module_id": "MOD-001",
+    "description": "密码必填",
+    "test_focus": "空密码注册失败"
+  },
+  {
+    "requirement_id": "PRD-FR-005",
+    "module_id": "MOD-001",
+    "description": "确认密码一致",
+    "test_focus": "两次密码不一致注册失败"
+  },
+  {
+    "requirement_id": "PRD-FR-006",
+    "module_id": "MOD-001",
+    "description": "用户名唯一",
+    "test_focus": "重复用户名注册失败"
+  },
+  {
+    "requirement_id": "PRD-FR-007",
+    "module_id": "MOD-001",
+    "description": "注册成功",
+    "test_focus": "合法输入注册成功"
+  },
+  {
+    "requirement_id": "PRD-FR-008",
+    "module_id": "MOD-002",
+    "description": "登录页面展示",
+    "test_focus": "页面元素完整性"
+  },
+  {
+    "requirement_id": "PRD-FR-009",
+    "module_id": "MOD-002",
+    "description": "登录账号校验",
+    "test_focus": "未注册用户登录失败"
+  },
+  {
+    "requirement_id": "PRD-FR-010",
+    "module_id": "MOD-002",
+    "description": "登录密码校验",
+    "test_focus": "密码错误登录失败"
+  },
+  {
+    "requirement_id": "PRD-FR-011",
+    "module_id": "MOD-002",
+    "description": "登录成功",
+    "test_focus": "正确账号密码登录成功"
+  },
+  {
+    "requirement_id": "PRD-FR-012",
+    "module_id": "MOD-002",
+    "description": "登录失败提示",
+    "test_focus": "错误信息可读"
+  },
+  {
+    "requirement_id": "PRD-FR-013",
+    "module_id": "MOD-003",
+    "description": "首页展示当前登录用户名",
+    "test_focus": "登录态展示"
+  },
+  {
+    "requirement_id": "PRD-FR-014",
+    "module_id": "MOD-003",
+    "description": "退出登录",
+    "test_focus": "登录态清除"
+  }
+]

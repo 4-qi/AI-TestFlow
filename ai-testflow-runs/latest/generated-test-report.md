@@ -6,11 +6,16 @@
 
 登录注册 Demo 主流程测试中通过 `11` 条，失败 `1` 条。失败用例为 `test_register_rejects_short_username_by_requirement`。
 
-## 2. 需求追踪
+## 2. 一站式流程阶段
 
-```text
-PRD-FR-003 -> REG-002 -> AC-003 -> TC-REG-003 -> BUG-001
-```
+| 阶段 | 状态 | 输出 |
+| --- | --- | --- |
+| PRD分析 | completed | `需求原文已读取` |
+| 需求拆解 | completed | `14` |
+| 测试用例设计 | completed | `12` |
+| 用例执行 | completed | `12` |
+| 测试报告生成 | completed | `generated-test-report.md` |
+| 自动提Bug | completed | `1` |
 
 ## 3. pytest 摘要
 
@@ -22,6 +27,8 @@ PRD-FR-003 -> REG-002 -> AC-003 -> TC-REG-003 -> BUG-001
 | failed | `1` |
 | 失败用例 | `test_register_rejects_short_username_by_requirement` |
 
-## 4. 缺陷判断
+## 4. 缺陷列表
 
-按 `PRD-FR-003` 和 `REG-002`，用户名长度小于 6 位时注册必须失败。当前自动化测试期望 `用户名长度小于 6 位时注册失败，HTTP 400`，实际结果为 `用户名长度小于 6 位时注册成功，HTTP 200`，因此形成 `BUG-001`。
+| Bug | 关联需求 | 关联用例 | 失败测试 | 标题 |
+| --- | --- | --- | --- | --- |
+| `BUG-001` | `PRD-FR-003` | `TC-REG-003` | `test_register_rejects_short_username_by_requirement` | 注册接口未校验用户名长度，短用户名可注册成功 |

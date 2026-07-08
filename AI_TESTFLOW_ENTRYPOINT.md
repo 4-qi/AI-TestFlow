@@ -137,7 +137,7 @@ test_register_rejects_short_username_by_requirement
 
 AI 不允许只根据测试状态判断问题，必须回到需求链路判断。
 
-本项目核心链路是：
+本项目当前 Demo 缺陷示例链路是：
 
 ```text
 PRD-FR-003 -> REG-002 -> AC-003 -> TC-REG-003 -> BUG-001
@@ -153,7 +153,7 @@ PRD-FR-003 -> REG-002 -> AC-003 -> TC-REG-003 -> BUG-001
 | `TC-REG-003` | 用户名长度小于 6 位注册失败 |
 | `BUG-001` | 注册接口未校验用户名长度，短用户名可注册成功 |
 
-如果测试请求：
+通用能力来自 `traceability.json` 中的 `defects` 列表；下面这条链是当前登录注册 Demo 中被自动化测试发现的缺陷实例。如果测试请求：
 
 ```json
 {
@@ -172,14 +172,15 @@ AI 完成检验后，应输出以下内容：
 1. 测试命令。
 2. CLI 真实输出摘要。
 3. pytest 真实输出摘要。
-4. 失败用例名称。
-5. 失败断言。
-6. 关联需求编号。
-7. 关联测试用例编号。
-8. 关联 Bug 编号。
-9. 生成产物路径。
-10. 需要更新的文档路径。
-11. 项目当前结论。
+4. 一站式流程阶段完成情况。
+5. 结构化需求数量。
+6. 结构化测试用例数量。
+7. 失败用例名称。
+8. 失败断言。
+9. 缺陷列表中的关联需求编号、测试用例编号和 Bug 编号。
+10. 生成产物路径。
+11. 需要更新的文档路径。
+12. 项目当前结论。
 
 标准结论格式：
 
@@ -202,11 +203,12 @@ AI 完成检验后，应输出以下内容：
 4. 读取 backend/app.py，确认当前后端真实实现。
 5. 读取 backend/tests/test_api.py，确认自动化测试真实断言。
 6. 运行 conda run -n AI-TestFlow python -m ai_testflow run。
-7. 读取 ai-testflow-runs/latest/inspection-summary.json、pytest-output.txt、traceability.json、generated-test-report.md 和 generated-bug-report.md。
-8. 分析 pytest 输出中的失败用例。
-9. 将失败用例回溯到 PRD-FR-003、REG-002、AC-003、TC-REG-003 和 BUG-001。
-10. 如执行结果与 docs/api-test-execution.md、docs/test-report.md、docs/bug-report.md 不一致，请更新这些文档。
-11. 最后输出本轮 AI 检验结论。
+7. 读取 ai-testflow-runs/latest/inspection-summary.json、requirements.json、pytest-output.txt、traceability.json、generated-test-cases.md、generated-test-report.md 和 generated-bug-report.md。
+8. 分析 inspection-summary.json 中的 workflow_stages、requirements_count、test_cases_count 和 defects。
+9. 分析 pytest 输出中的失败用例。
+10. 将失败用例回溯到 traceability.json 中的缺陷列表；当前 Demo 缺陷实例为 PRD-FR-003、REG-002、AC-003、TC-REG-003 和 BUG-001。
+11. 如执行结果与 docs/api-test-execution.md、docs/test-report.md、docs/bug-report.md 不一致，请更新这些文档。
+12. 最后输出本轮 AI 检验结论。
 
 要求：
 

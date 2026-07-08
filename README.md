@@ -89,8 +89,14 @@ conda run -n AI-TestFlow python -m ai_testflow run
 2. 读取 PRD、需求规格、测试用例、后端代码和自动化测试。
 3. 运行 `conda run -n AI-TestFlow python -m pytest -q backend/tests`。
 4. 捕获真实 pytest 输出。
-5. 将失败用例回溯到 `PRD-FR-003 -> REG-002 -> AC-003 -> TC-REG-003 -> BUG-001`。
-6. 生成结构化 JSON 摘要和 Markdown 报告。
+5. 将失败用例回溯到 `traceability.json` 的 `defects` 列表。
+6. 生成结构化需求、测试用例、执行记录、测试报告和 Bug 单。
+
+当前 Demo 中的缺陷实例链路是：
+
+```text
+PRD-FR-003 -> REG-002 -> AC-003 -> TC-REG-003 -> BUG-001
+```
 
 运行产物输出到：
 
@@ -102,8 +108,10 @@ ai-testflow-runs/latest/
 
 ```text
 inspection-summary.json
+requirements.json
 pytest-output.txt
 traceability.json
+generated-test-cases.md
 generated-test-report.md
 generated-bug-report.md
 ```

@@ -1,12 +1,14 @@
 # AI-TestFlow Traceability
 
-Use this file when explaining the known defect discovered by the AI-TestFlow skill.
+Use this file when explaining defect mappings discovered by the AI-TestFlow skill.
 
-## Fixed Traceability Chain
+## Current Demo Defect Example
 
 ```text
 PRD-FR-003 -> REG-002 -> AC-003 -> TC-REG-003 -> BUG-001
 ```
+
+This is the current Demo's discovered defect, not the only chain the one-stop workflow can represent.
 
 ## Meaning
 
@@ -46,9 +48,8 @@ HTTP 200
 
 ## Reporting Sentence
 
-Use this concise explanation:
+Use this concise explanation for the current Demo defect:
 
 ```text
 AI-TestFlow 检验确认：PRD-FR-003 要求用户名长度必须大于等于 6 位，但后端注册接口未实现 REG-002；TC-REG-003 因实际返回 HTTP 200 而失败，该失败形成 BUG-001。
 ```
-

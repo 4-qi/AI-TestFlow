@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 
 from ai_testflow.config import load_config
-from ai_testflow.inspector import TRACEABILITY, run_inspection
+from ai_testflow.inspector import KNOWN_DEFECTS, run_inspection
 from ai_testflow.pytest_runner import parse_pytest_result
 
 
@@ -40,12 +40,14 @@ FAILED backend/tests/test_api.py::test_register_rejects_short_username_by_requir
     assert result.failed_test_names == ["test_register_rejects_short_username_by_requirement"]
 
 
-def test_traceability_maps_short_username_failure_to_bug():
-    assert TRACEABILITY["requirement_id"] == "PRD-FR-003"
-    assert TRACEABILITY["rule_id"] == "REG-002"
-    assert TRACEABILITY["acceptance_id"] == "AC-003"
-    assert TRACEABILITY["test_case_id"] == "TC-REG-003"
-    assert TRACEABILITY["bug_id"] == "BUG-001"
+def test_known_defect_maps_short_username_failure_to_bug():
+    defect = KNOWN_DEFECTS[0]
+
+    assert defect["requirement_id"] == "PRD-FR-003"
+    assert defect["rule_id"] == "REG-002"
+    assert defect["acceptance_id"] == "AC-003"
+    assert defect["test_case_id"] == "TC-REG-003"
+    assert defect["bug_id"] == "BUG-001"
 
 
 def test_run_inspection_writes_stable_summary(tmp_path, monkeypatch):
@@ -62,7 +64,22 @@ def test_run_inspection_writes_stable_summary(tmp_path, monkeypatch):
     ]:
         file_path = tmp_path / path
         file_path.parent.mkdir(parents=True, exist_ok=True)
-        file_path.write_text(path, encoding="utf-8")
+        if path == "docs/requirement-spec.md":
+            file_path.write_text(
+                "| 需求编号 | 所属模块 | 需求描述 | 测试重点 |\n"
+                "| --- | --- | --- | --- |\n"
+                "| PRD-FR-003 | MOD-001 | 用户名长度必须大于等于 6 位 | 小于 6 位用户名注册失败 |\n",
+                encoding="utf-8",
+            )
+        elif path == "docs/test-cases.md":
+            file_path.write_text(
+                "| 用例编号 | 关联需求 | 标题 | 前置条件 | 测试数据 | 期望结果 | 优先级 |\n"
+                "| --- | --- | --- | --- | --- | --- | --- |\n"
+                "| TC-REG-003 | PRD-FR-003 | 用户名长度小于 6 位注册失败 | 用户名未存在 | `username=abc` | 注册失败，提示 `用户名长度不能少于6位` | P0 |\n",
+                encoding="utf-8",
+            )
+        else:
+            file_path.write_text(path, encoding="utf-8")
 
     config_text = """project_name: AI-TestFlow
 prd_path: docs/prd.md
@@ -88,6 +105,10 @@ output_dir: ai-testflow-runs/latest
     assert result.summary["status"] == "defects_found"
     assert summary["failed_tests"] == 1
     assert summary["passed_tests"] == 11
+    assert summary["requirements_count"] == 1
+    assert summary["test_cases_count"] == 1
     assert summary["bug_id"] == "BUG-001"
+    assert summary["defects"][0]["bug_id"] == "BUG-001"
     assert (tmp_path / "ai-testflow-runs/latest/pytest-output.txt").exists()
-
+    assert (tmp_path / "ai-testflow-runs/latest/requirements.json").exists()
+    assert (tmp_path / "ai-testflow-runs/latest/generated-test-cases.md").exists()
