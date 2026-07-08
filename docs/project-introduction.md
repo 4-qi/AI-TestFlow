@@ -525,7 +525,7 @@ Agent 的一次完整执行过程是：
 读取 agents/ai-testflow-agent.yaml
   -> 读取 ai-testflow.yml
   -> 读取 PRD、需求规格、测试用例、后端代码
-  -> 调用 conda run -n AI-TestFlow python -m ai_testflow agent-run
+  -> 调用 conda run --no-capture-output -n AI-TestFlow python -m ai_testflow agent-run
   -> 读取 ai-testflow-runs/latest/ 运行产物
   -> 输出测试结论和 Bug 解释
 ```

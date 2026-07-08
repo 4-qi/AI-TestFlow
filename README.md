@@ -84,7 +84,7 @@ npm 10.9.3
 在项目根目录执行：
 
 ```bash
-conda run -n AI-TestFlow python -m ai_testflow agent-run
+conda run --no-capture-output -n AI-TestFlow python -m ai_testflow agent-run
 ```
 
 该命令会自动完成：

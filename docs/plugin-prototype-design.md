@@ -29,7 +29,7 @@ PRD
 主命令：
 
 ```bash
-conda run -n AI-TestFlow python -m ai_testflow agent-run
+conda run --no-capture-output -n AI-TestFlow python -m ai_testflow agent-run
 ```
 
 ## 3. 技术边界

@@ -14,7 +14,7 @@ AI Testing Workflow：多角色测试工程师 Agent，项目核心
 运行真正测试工程师 Agent：
 
 ```bash
-conda run -n AI-TestFlow python -m ai_testflow agent-run
+conda run --no-capture-output -n AI-TestFlow python -m ai_testflow agent-run
 ```
 
 运行前必须配置：

@@ -26,7 +26,7 @@ Demo 系统只作为被测对象，真正项目价值在 AI Testing Workflow。
 ## 3. 主入口
 
 ```bash
-conda run -n AI-TestFlow python -m ai_testflow agent-run
+conda run --no-capture-output -n AI-TestFlow python -m ai_testflow agent-run
 ```
 
 必须配置：

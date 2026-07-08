@@ -31,7 +31,7 @@ python skills/ai-testflow/scripts/run_ai_testflow.py
 The script calls:
 
 ```bash
-conda run -n AI-TestFlow python -m ai_testflow agent-run
+conda run --no-capture-output -n AI-TestFlow python -m ai_testflow agent-run
 ```
 
 ## Expected Output Contract

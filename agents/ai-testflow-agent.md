@@ -32,7 +32,7 @@ PRD分析 -> 需求拆解 -> 测试用例设计 -> 脚本生成 -> 执行测试 
 ## 3. 主入口
 
 ```bash
-conda run -n AI-TestFlow python -m ai_testflow agent-run
+conda run --no-capture-output -n AI-TestFlow python -m ai_testflow agent-run
 ```
 
 必须配置：
