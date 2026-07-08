@@ -122,13 +122,36 @@ SCRIPT_PLAN_SCHEMA: dict[str, Any] = {
                 "properties": {
                     "test_case_id": {"type": "string"},
                     "name": {"type": "string"},
+                    "setup_api_actions": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "method": {"type": "string", "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"]},
+                                "path": {"type": "string"},
+                                "json_body": {"type": "object"},
+                                "expected_status": {"type": "integer"},
+                            },
+                            "required": ["method", "path", "json_body", "expected_status"],
+                        },
+                    },
                     "method": {"type": "string", "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"]},
                     "path": {"type": "string"},
                     "json_body": {"type": "object"},
                     "expected_status": {"type": "integer"},
                     "expected_json_contains": {"type": "object"},
                 },
-                "required": ["test_case_id", "name", "method", "path", "json_body", "expected_status", "expected_json_contains"],
+                "required": [
+                    "test_case_id",
+                    "name",
+                    "setup_api_actions",
+                    "method",
+                    "path",
+                    "json_body",
+                    "expected_status",
+                    "expected_json_contains",
+                ],
             },
         },
         "ui_tests": {

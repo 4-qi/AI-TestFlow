@@ -235,6 +235,7 @@ def test_generated_api_tests_render_generic_api_actions():
         {
             "test_case_id": "TC-003",
             "name": "用户名长度小于6时注册失败",
+            "setup_api_actions": [],
             "method": "POST",
             "path": "/api/register",
             "json_body": {
@@ -254,6 +255,7 @@ def test_generated_api_tests_render_generic_api_actions():
 
     assert "def test_generated_" in generated_script
     assert "'method': 'POST'" in generated_script
+    assert "'setup_api_actions': []" in generated_script
     assert "'path': '/api/register'" in generated_script
     assert "'username': 'abc'" in generated_script
     assert 'importlib.import_module("backend.app")' in generated_script
@@ -292,6 +294,7 @@ def test_script_agent_uses_structured_plan_to_generate_scripts(tmp_path):
                     {
                         "test_case_id": "TC-REG-003",
                         "name": "用户名长度小于6时注册失败",
+                        "setup_api_actions": [],
                         "method": "POST",
                         "path": "/api/register",
                         "json_body": {
@@ -351,6 +354,44 @@ def test_script_agent_uses_structured_plan_to_generate_scripts(tmp_path):
     playwright_text = playwright_target.read_text(encoding="utf-8")
     assert "const cases =" in playwright_text
     assert "fill_label" in playwright_text
+
+
+def test_generated_api_tests_run_setup_actions(tmp_path):
+    api_tests = [
+        {
+            "test_case_id": "TC-LOGIN-001",
+            "name": "正确用户名密码登录成功",
+            "setup_api_actions": [
+                {
+                    "method": "POST",
+                    "path": "/api/register",
+                    "json_body": {
+                        "username": "setupuser",
+                        "password": "Password123",
+                        "confirm_password": "Password123",
+                    },
+                    "expected_status": 200,
+                }
+            ],
+            "method": "POST",
+            "path": "/api/login",
+            "json_body": {
+                "username": "setupuser",
+                "password": "Password123",
+            },
+            "expected_status": 200,
+            "expected_json_contains": {
+                "message": "登录成功",
+            },
+        }
+    ]
+    generated_path = tmp_path / "generated_api_tests.py"
+    generated_path.write_text(render_generated_api_tests(api_tests), encoding="utf-8")
+
+    script = generated_path.read_text(encoding="utf-8")
+
+    assert "for setup_action in case[\"setup_api_actions\"]" in script
+    assert "'username': 'setupuser'" in script
 
 
 def test_known_defect_maps_short_username_failure_to_bug():

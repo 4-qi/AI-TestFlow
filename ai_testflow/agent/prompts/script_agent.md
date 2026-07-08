@@ -12,6 +12,7 @@
 2. `api_tests` 中每个对象必须包含：
    - `test_case_id`
    - `name`
+   - `setup_api_actions`
    - `method`
    - `path`
    - `json_body`
@@ -29,3 +30,8 @@
    - `expect_url`
 5. 输出动作，不要输出 pytest 或 Playwright 源码。
 6. 根据后端源码中的真实路由、请求字段和响应字段生成接口动作。
+7. 如果测试依赖前置数据，必须在 `setup_api_actions` 中生成准备动作。
+8. 如果不需要前置数据，`setup_api_actions` 必须输出空数组。
+9. 例如“重复用户名注册失败”必须先用 setup 动作注册同名用户，再执行重复注册断言。
+10. 例如“正确用户名密码登录成功”必须先用 setup 动作注册该用户，再执行登录断言。
+11. 不要把缺少前置数据导致的失败当成产品缺陷。

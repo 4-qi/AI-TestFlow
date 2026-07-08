@@ -26,6 +26,9 @@ def _render_api_cases(api_tests: list[dict[str, Any]]) -> str:
         lines.append(
             f'''def {function_name}(client):
     case = {payload}
+    for setup_action in case["setup_api_actions"]:
+        setup_response = _send(client, setup_action)
+        assert setup_response.status_code == setup_action["expected_status"]
     response = _send(client, case)
     assert response.status_code == case["expected_status"]
     body = response.get_json(silent=True) or {{}}
