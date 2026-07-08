@@ -6,6 +6,7 @@ import pytest
 
 from ai_testflow.agent.llm_client import LlmSettings, OpenAILlmClient, _unwrap_named_object
 from ai_testflow.agent.agents.script_agent import _align_api_expectations_with_test_cases, run_script_agent
+from ai_testflow.agent.orchestrator import _add_fallback_defects_for_failed_tests
 from ai_testflow.agent_designer import design_requirements_from_prd, design_test_cases_from_requirements
 from ai_testflow.analyzer import analyze_prd, build_requirements, extract_requirement_rows, extract_test_case_rows
 from ai_testflow.config import load_config
@@ -470,6 +471,57 @@ def test_generated_api_tests_run_setup_actions(tmp_path):
 
     assert "for setup_action in case[\"setup_api_actions\"]" in script
     assert "'username': 'setupuser'" in script
+
+
+def test_fallback_defect_is_created_when_analysis_misses_failed_pytest():
+    pytest_result = parse_pytest_result(
+        ["pytest"],
+        1,
+        "FAILED generated_api_tests.py::test_generated_tc_003_short_username\n1 failed, 9 passed",
+        "",
+        "FAILED generated_api_tests.py::test_generated_tc_003_short_username\n1 failed, 9 passed",
+    )
+    script_plan = {
+        "api_tests": [
+            {
+                "test_case_id": "TC-003",
+                "name": "short username",
+                "setup_api_actions": [],
+                "method": "POST",
+                "path": "/api/register",
+                "json_body": {
+                    "username": "abc",
+                    "password": "Test1234",
+                    "confirm_password": "Test1234",
+                },
+                "expected_status": 400,
+                "expected_json_contains": {
+                    "success": False,
+                },
+            }
+        ]
+    }
+    test_case_design = {
+        "test_cases": [
+            {
+                "test_case_id": "TC-003",
+                "requirement_id": "REQ-003",
+                "title": "用户名长度小于6位时提交注册应提示错误",
+                "priority": "高",
+            }
+        ]
+    }
+
+    result = _add_fallback_defects_for_failed_tests(
+        {"status": "passed", "defects": []},
+        script_plan,
+        test_case_design,
+        pytest_result,
+    )
+
+    assert result["status"] == "has_defects"
+    assert result["defects"][0]["requirement_id"] == "REQ-003"
+    assert result["defects"][0]["test_case_id"] == "TC-003"
 
 
 def test_known_defect_maps_short_username_failure_to_bug():

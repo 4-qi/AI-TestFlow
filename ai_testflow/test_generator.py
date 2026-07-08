@@ -20,8 +20,7 @@ def render_generated_playwright_tests(ui_tests: list[dict[str, Any]]) -> str:
 def _render_api_cases(api_tests: list[dict[str, Any]]) -> str:
     lines: list[str] = []
     for index, api_test in enumerate(api_tests, start=1):
-        name_source = f"{api_test.get('test_case_id', '')}_{api_test.get('name', '')}".strip("_")
-        function_name = _python_test_name(name_source or f"api_case_{index}")
+        function_name = generated_api_test_name(api_test, index)
         payload = pprint.pformat(api_test, sort_dicts=False, width=100)
         lines.append(
             f'''def {function_name}(client):
@@ -36,6 +35,11 @@ def _render_api_cases(api_tests: list[dict[str, Any]]) -> str:
 '''
         )
     return "\n".join(lines).rstrip() + "\n"
+
+
+def generated_api_test_name(api_test: dict[str, Any], index: int = 1) -> str:
+    name_source = f"{api_test.get('test_case_id', '')}_{api_test.get('name', '')}".strip("_")
+    return _python_test_name(name_source or f"api_case_{index}")
 
 
 def _python_test_name(value: str) -> str:
