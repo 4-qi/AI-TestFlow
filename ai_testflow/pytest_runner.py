@@ -65,8 +65,14 @@ def _extract_failed_test_names(text: str) -> list[str]:
     for match in re.findall(r"FAILED\s+[\w./-]+::([\w_]+)", text):
         if match not in names:
             names.append(match)
-    for match in re.findall(r"^\s+(?:\d+\)\s+)?[\w./-]+:\d+:\d+\s+›\s+(.+)$", text, flags=re.MULTILINE):
-        name = match.strip()
+    numbered_playwright_names = re.findall(r"^\s+\d+\)\s+[\w./-]+:\d+:\d+\s+›\s+(.+)$", text, flags=re.MULTILINE)
+    playwright_names = numbered_playwright_names or re.findall(r"^\s+[\w./-]+:\d+:\d+\s+›\s+(.+)$", text, flags=re.MULTILINE)
+    for match in playwright_names:
+        name = _clean_playwright_title(match)
         if name not in names:
             names.append(name)
     return names
+
+
+def _clean_playwright_title(value: str) -> str:
+    return re.sub(r"\s+[─━-]+$", "", value.strip()).strip()

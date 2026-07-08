@@ -177,7 +177,19 @@ async function clickByRole(page, role, name) {
     await exactLocator.first().click();
     return;
   }
-  await page.getByRole(role, { name }).first().click();
+  const roleLocator = page.getByRole(role, { name });
+  if (await roleLocator.count()) {
+    await roleLocator.first().click();
+    return;
+  }
+  if (role === 'button') {
+    const buttonTextLocator = page.locator('button').filter({ hasText: name });
+    if (await buttonTextLocator.count()) {
+      await buttonTextLocator.first().click();
+      return;
+    }
+  }
+  await page.getByText(name).first().click();
 }
 
 async function expectText(page, text) {

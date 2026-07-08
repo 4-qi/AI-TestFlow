@@ -175,8 +175,10 @@ FAILED backend/tests/test_api.py::test_register_rejects_short_username_by_requir
 
 def test_parse_playwright_result_extracts_failed_test_titles():
     output = """
-  1) generated-tests/generated_playwright_tests.spec.js:377:3 › 验证注册页面包含所有必要元素
-  2) generated-tests/generated_playwright_tests.spec.js:377:3 › 用户名为空提交时显示错误提示
+  1) generated-tests/generated_playwright_tests.spec.js:377:3 › 验证注册页面包含所有必要元素 ─────────
+  2) generated-tests/generated_playwright_tests.spec.js:377:3 › 用户名为空提交时显示错误提示 ─────────
+    generated-tests/generated_playwright_tests.spec.js:377:3 › 验证注册页面包含所有必要元素 ─────────
+    generated-tests/generated_playwright_tests.spec.js:377:3 › 用户名为空提交时显示错误提示 ─────────
   2 failed
 """
 
@@ -362,7 +364,7 @@ def test_generated_playwright_tests_render_generic_ui_actions():
     assert "async function clickByRole" in generated_script
     assert "async function expectText" in generated_script
     assert "page.getByLabel(label).first().fill(value)" in generated_script
-    assert "page.getByRole(role, { name }).first().click()" in generated_script
+    assert "page.locator('button').filter({ hasText: name })" in generated_script
     assert "page.getByText(text).first()" in generated_script
 
 
