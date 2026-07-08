@@ -77,6 +77,7 @@ def run_agent_workflow(
         config.api_test_runtime,
         project_root / config.generated_tests_path,
         project_root / config.generated_playwright_tests_path,
+        prd_text=prd_text,
     )
     _mark_stage(workflow_state, "Script Agent", "completed")
 

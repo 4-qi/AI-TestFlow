@@ -16,6 +16,7 @@ def run_script_agent(
     api_test_runtime: dict[str, str],
     api_target: Path,
     playwright_target: Path,
+    prd_text: str = "",
 ) -> dict[str, Any]:
     script_plan = client.generate_json(
         name="script_plan",
@@ -28,7 +29,7 @@ def run_script_agent(
         schema=SCRIPT_PLAN_SCHEMA,
     )
     validate_required_keys("script_plan", script_plan, SCRIPT_PLAN_SCHEMA)
-    script_plan = _align_api_expectations_with_test_cases(script_plan, test_cases)
+    script_plan = _align_api_expectations_with_test_cases(script_plan, test_cases, prd_text)
 
     api_script = render_generated_api_tests(script_plan["api_tests"], api_test_runtime)
     playwright_script = render_generated_playwright_tests(script_plan["ui_tests"])
@@ -43,17 +44,25 @@ def run_script_agent(
     }
 
 
-def _align_api_expectations_with_test_cases(script_plan: dict[str, Any], test_cases: list[dict[str, Any]]) -> dict[str, Any]:
+def _align_api_expectations_with_test_cases(
+    script_plan: dict[str, Any],
+    test_cases: list[dict[str, Any]],
+    prd_text: str = "",
+) -> dict[str, Any]:
     test_case_index = {item["test_case_id"]: item for item in test_cases}
     for api_test in script_plan["api_tests"]:
         test_case = test_case_index.get(api_test["test_case_id"])
         if not test_case:
             continue
-        if _is_negative_expected_case(test_case) and 200 <= int(api_test["expected_status"]) < 300:
-            api_test["expected_status"] = 400
-            expected_json = api_test.setdefault("expected_json_contains", {})
-            if expected_json.get("success") is True:
-                expected_json["success"] = False
+        is_negative = _is_negative_expected_case(test_case)
+        if is_negative:
+            if 200 <= int(api_test["expected_status"]) < 300:
+                api_test["expected_status"] = 400
+        api_test["expected_json_contains"] = _stable_json_expectations(
+            api_test.get("expected_json_contains", {}),
+            prd_text,
+            force_success_false=is_negative,
+        )
     return script_plan
 
 
@@ -78,3 +87,34 @@ def _is_negative_expected_case(test_case: dict[str, Any]) -> bool:
     if any(term in expected_text for term in negative_terms):
         return True
     return False
+
+
+def _stable_json_expectations(expected_json: dict[str, Any], prd_text: str, force_success_false: bool = False) -> dict[str, Any]:
+    stable: dict[str, Any] = {}
+    if "success" in expected_json:
+        stable["success"] = False if force_success_false else expected_json["success"]
+
+    for key, value in expected_json.items():
+        if key == "success":
+            continue
+        if _is_prd_anchored_json_expectation(key, value, prd_text):
+            stable[key] = value
+    return stable
+
+
+def _is_prd_anchored_json_expectation(key: str, value: Any, prd_text: str) -> bool:
+    if not prd_text:
+        return False
+    if key not in prd_text:
+        return False
+    if isinstance(value, str):
+        if not value:
+            return False
+        return _compact(value) in _compact(prd_text)
+    if isinstance(value, dict):
+        return any(_is_prd_anchored_json_expectation(str(child_key), child_value, prd_text) for child_key, child_value in value.items())
+    return str(value) in prd_text
+
+
+def _compact(value: str) -> str:
+    return "".join(value.split())

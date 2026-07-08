@@ -434,6 +434,84 @@ def test_script_agent_aligns_negative_case_expectations():
     assert aligned["api_tests"][0]["expected_json_contains"]["success"] is False
 
 
+def test_script_agent_drops_unanchored_negative_message_assertions():
+    script_plan = {
+        "api_tests": [
+            {
+                "test_case_id": "TC-012",
+                "name": "确认密码与密码不一致注册失败",
+                "setup_api_actions": [],
+                "method": "POST",
+                "path": "/api/register",
+                "json_body": {
+                    "username": "testuser",
+                    "password": "Test1234",
+                    "confirm_password": "Different",
+                },
+                "expected_status": 400,
+                "expected_json_contains": {
+                    "message": "确认密码与密码不一致",
+                },
+            }
+        ],
+        "ui_tests": [],
+    }
+    test_cases = [
+        {
+            "test_case_id": "TC-012",
+            "title": "确认密码与密码不一致注册失败",
+            "expected_result": "注册失败，提示确认密码与密码不一致",
+        }
+    ]
+
+    aligned = _align_api_expectations_with_test_cases(
+        script_plan,
+        test_cases,
+        "用户注册时，确认密码必须与密码一致。",
+    )
+
+    assert aligned["api_tests"][0]["expected_json_contains"] == {}
+
+
+def test_script_agent_drops_unanchored_error_schema_assertions():
+    script_plan = {
+        "api_tests": [
+            {
+                "test_case_id": "TC-039",
+                "name": "错误响应格式验证",
+                "setup_api_actions": [],
+                "method": "POST",
+                "path": "/api/register",
+                "json_body": {
+                    "username": "",
+                    "password": "test",
+                },
+                "expected_status": 400,
+                "expected_json_contains": {
+                    "errorCode": "",
+                    "errorMessage": "",
+                },
+            }
+        ],
+        "ui_tests": [],
+    }
+    test_cases = [
+        {
+            "test_case_id": "TC-039",
+            "title": "错误响应格式验证",
+            "expected_result": "响应体为结构化错误信息",
+        }
+    ]
+
+    aligned = _align_api_expectations_with_test_cases(
+        script_plan,
+        test_cases,
+        "后端接口应返回结构化错误信息，便于前端展示和测试记录。",
+    )
+
+    assert aligned["api_tests"][0]["expected_json_contains"] == {}
+
+
 def test_script_agent_does_not_treat_precondition_absence_as_negative_case():
     script_plan = {
         "api_tests": [
