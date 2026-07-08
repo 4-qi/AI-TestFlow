@@ -13,6 +13,18 @@ class LlmSettings:
     model: str
     api_key_env: str
     base_url: str | None = None
+    raw_output_dir: Path | None = None
+
+
+class LlmJsonParseError(ValueError):
+    def __init__(self, name: str, error: json.JSONDecodeError, raw_path: Path | None):
+        self.name = name
+        self.raw_path = raw_path
+        location = f"line {error.lineno} column {error.colno} char {error.pos}"
+        message = f"{name} returned invalid JSON at {location}: {error.msg}"
+        if raw_path:
+            message += f". Raw output saved to {raw_path}"
+        super().__init__(message)
 
 
 class OpenAILlmClient:
@@ -31,6 +43,7 @@ class OpenAILlmClient:
         self._client = OpenAI(api_key=api_key, base_url=base_url) if base_url else OpenAI(api_key=api_key)
         self._provider = settings.provider
         self._model = settings.model
+        self._raw_output_dir = settings.raw_output_dir
 
     def generate_json(self, *, name: str, system_prompt: str, user_prompt: str, schema: dict[str, Any]) -> dict[str, Any]:
         if self._provider == "deepseek":
@@ -55,7 +68,7 @@ class OpenAILlmClient:
                 }
             },
         )
-        return _unwrap_named_object(name, json.loads(response.output_text))
+        return self._parse_json_response(name, response.output_text)
 
     def _generate_deepseek_json(self, *, name: str, system_prompt: str, user_prompt: str, schema: dict[str, Any]) -> dict[str, Any]:
         schema_text = json.dumps(schema, ensure_ascii=False, indent=2)
@@ -80,13 +93,79 @@ class OpenAILlmClient:
         content = response.choices[0].message.content
         if not content:
             raise RuntimeError("DeepSeek returned empty JSON content")
-        return _unwrap_named_object(name, json.loads(content))
+        try:
+            return self._parse_json_response(name, content)
+        except LlmJsonParseError as first_error:
+            repaired = self._repair_deepseek_json(
+                name=name,
+                invalid_content=content,
+                parse_error=str(first_error),
+                schema=schema,
+            )
+            return self._parse_json_response(name, repaired)
+
+    def _parse_json_response(self, name: str, content: str) -> dict[str, Any]:
+        try:
+            return _unwrap_named_object(name, json.loads(content))
+        except json.JSONDecodeError as exc:
+            raw_path = _write_raw_llm_output(self._raw_output_dir, name, content)
+            raise LlmJsonParseError(name, exc, raw_path) from exc
+
+    def _repair_deepseek_json(self, *, name: str, invalid_content: str, parse_error: str, schema: dict[str, Any]) -> str:
+        schema_text = json.dumps(schema, ensure_ascii=False, indent=2)
+        response = self._client.chat.completions.create(
+            model=self._model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You repair invalid JSON for an automated testing agent. "
+                        "Output valid JSON only. Do not output Markdown. "
+                        f"The JSON object name is {name}. "
+                        "The JSON must satisfy this JSON Schema:\n"
+                        f"{schema_text}"
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        f"JSON parse error:\n{parse_error}\n\n"
+                        f"Invalid content:\n{invalid_content}\n\n"
+                        "请只输出修复后的 json 对象，不要解释。"
+                    ),
+                },
+            ],
+            response_format={"type": "json_object"},
+            stream=False,
+        )
+        repaired = response.choices[0].message.content
+        if not repaired:
+            raise RuntimeError(f"DeepSeek returned empty repaired JSON content for {name}")
+        return repaired
 
 
 def _unwrap_named_object(name: str, data: dict[str, Any]) -> dict[str, Any]:
     if name in data and isinstance(data[name], dict):
         return data[name]
     return data
+
+
+def _write_raw_llm_output(raw_output_dir: Path | None, name: str, content: str) -> Path | None:
+    if raw_output_dir is None:
+        return None
+    raw_output_dir.mkdir(parents=True, exist_ok=True)
+    base_name = f"llm-raw-{_safe_name(name)}"
+    path = raw_output_dir / f"{base_name}.txt"
+    index = 2
+    while path.exists():
+        path = raw_output_dir / f"{base_name}-{index}.txt"
+        index += 1
+    path.write_text(content, encoding="utf-8")
+    return path
+
+
+def _safe_name(value: str) -> str:
+    return "".join(char if char.isalnum() or char in {"-", "_"} else "-" for char in value).strip("-") or "response"
 
 
 def load_env_file(path: Path) -> None:

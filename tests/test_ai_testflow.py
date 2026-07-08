@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from ai_testflow.agent.llm_client import LlmSettings, OpenAILlmClient, _unwrap_named_object, load_env_file
+from ai_testflow.agent.llm_client import LlmJsonParseError, LlmSettings, OpenAILlmClient, _unwrap_named_object, load_env_file
 from ai_testflow.agent.agents.script_agent import run_script_agent
 from ai_testflow.agent.orchestrator import _filter_defects_to_failed_tests
 from ai_testflow.agent_designer import design_requirements_from_prd, design_test_cases_from_requirements
@@ -105,6 +105,17 @@ def test_llm_json_unwraps_named_object():
     }
 
     assert _unwrap_named_object("prd_analysis", data) == data["prd_analysis"]
+
+
+def test_llm_json_parse_error_saves_raw_output(tmp_path):
+    client = OpenAILlmClient.__new__(OpenAILlmClient)
+    client._raw_output_dir = tmp_path
+
+    with pytest.raises(LlmJsonParseError, match="test_case_design returned invalid JSON"):
+        client._parse_json_response("test_case_design", '{"test_cases": [}')
+
+    raw_path = tmp_path / "llm-raw-test_case_design.txt"
+    assert raw_path.read_text(encoding="utf-8") == '{"test_cases": [}'
 
 
 def test_agent_summary_prints_readable_failed_tests_and_defects(capsys):

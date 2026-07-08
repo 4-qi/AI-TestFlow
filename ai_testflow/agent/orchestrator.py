@@ -39,6 +39,7 @@ def run_agent_workflow(
         model=config.llm_model,
         api_key_env=config.llm_api_key_env,
         base_url=config.llm_base_url,
+        raw_output_dir=output_dir,
     )
     _emit(progress, f"LLM provider: {config.llm_provider} | model: {config.llm_model}")
     client = OpenAILlmClient(llm_settings)
