@@ -202,6 +202,18 @@ async function expectText(page, text) {
   }
 }
 
+async function expectCurrentUrl(page, action) {
+  if (action.pattern) {
+    await expect(page).toHaveURL(new RegExp(action.pattern));
+    return;
+  }
+  if (action.url) {
+    await expect(page).toHaveURL(action.url);
+    return;
+  }
+  throw new Error('expect_url action requires url or pattern');
+}
+
 for (const item of cases) {
   test(item.title, async ({ page }) => {
     for (const action of item.actions) {
@@ -214,7 +226,7 @@ for (const item of cases) {
       } else if (action.action === 'expect_text') {
         await expectText(page, action.text);
       } else if (action.action === 'expect_url') {
-        await expect(page).toHaveURL(new RegExp(action.pattern));
+        await expectCurrentUrl(page, action);
       } else {
         throw new Error(`Unsupported UI action: ${action.action}`);
       }

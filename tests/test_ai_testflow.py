@@ -8,7 +8,7 @@ import pytest
 
 from ai_testflow.agent.llm_client import LlmJsonParseError, LlmSettings, OpenAILlmClient, _unwrap_named_object, load_env_file
 from ai_testflow.agent.agents.script_agent import run_script_agent
-from ai_testflow.agent.orchestrator import _filter_defects_to_failed_tests
+from ai_testflow.agent.orchestrator import _build_failure_classification, _filter_defects_to_failed_tests
 from ai_testflow.agent_designer import design_requirements_from_prd, design_test_cases_from_requirements
 from ai_testflow.analyzer import analyze_prd, build_requirements, extract_requirement_rows, extract_test_case_rows
 from ai_testflow.cli import _print_agent_summary
@@ -133,6 +133,8 @@ def test_agent_summary_prints_readable_failed_tests_and_defects(capsys):
             "playwright_passed_tests": 4,
             "playwright_failed_tests": 0,
             "playwright_failed_test_names": [],
+            "unclassified_api_failures": [],
+            "unclassified_playwright_failures": [],
             "defects": [
                 {
                     "bug_id": "BUG-AUTO-001",
@@ -363,9 +365,28 @@ def test_generated_playwright_tests_render_generic_ui_actions():
     assert "async function fillByLabel" in generated_script
     assert "async function clickByRole" in generated_script
     assert "async function expectText" in generated_script
+    assert "async function expectCurrentUrl" in generated_script
     assert "page.getByLabel(label).first().fill(value)" in generated_script
     assert "page.locator('button').filter({ hasText: name })" in generated_script
     assert "page.getByText(text).first()" in generated_script
+    assert "await expect(page).toHaveURL(action.url)" in generated_script
+    assert "expect_url action requires url or pattern" in generated_script
+
+
+def test_failure_classification_keeps_defects_and_execution_failures_separate():
+    summary = {
+        "failed_test_names": ["test_real_defect", "test_script_problem"],
+        "playwright_failed_test_names": ["页面提交空用户名，验证错误提示"],
+        "defects": [{"failed_test_name": "test_real_defect"}],
+    }
+
+    classification = _build_failure_classification(summary)
+
+    assert classification == {
+        "defect_failed_tests": ["test_real_defect"],
+        "unclassified_api_failures": ["test_script_problem"],
+        "unclassified_playwright_failures": ["页面提交空用户名，验证错误提示"],
+    }
 
 
 def test_script_agent_uses_structured_plan_to_generate_scripts(tmp_path):

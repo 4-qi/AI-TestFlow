@@ -159,6 +159,7 @@ def run_agent_workflow(
         "defects": defect_analysis.get("defects", []),
         "output_dir": str(config.output_dir),
     }
+    summary.update(_build_failure_classification(summary))
     workflow_state["script_files"] = script_files
 
     output_files = _write_agent_outputs(
@@ -202,6 +203,29 @@ def _filter_defects_to_failed_tests(defect_analysis: dict[str, Any], pytest_resu
         if defect.get("failed_test_name") in failed_names
     ]
     return {"status": "has_defects" if defects else "passed", "defects": defects}
+
+
+def _build_failure_classification(summary: dict[str, Any]) -> dict[str, Any]:
+    defect_failed_names = {
+        defect.get("failed_test_name")
+        for defect in summary.get("defects", [])
+        if defect.get("failed_test_name")
+    }
+    defect_failed_tests = [
+        failed_test_name
+        for failed_test_name in summary.get("failed_test_names", [])
+        if failed_test_name in defect_failed_names
+    ]
+    unclassified_api_failures = [
+        failed_test_name
+        for failed_test_name in summary.get("failed_test_names", [])
+        if failed_test_name not in defect_failed_names
+    ]
+    return {
+        "defect_failed_tests": defect_failed_tests,
+        "unclassified_api_failures": unclassified_api_failures,
+        "unclassified_playwright_failures": summary.get("playwright_failed_test_names", []),
+    }
 
 
 def _write_agent_outputs(

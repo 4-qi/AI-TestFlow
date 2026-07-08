@@ -90,6 +90,14 @@ def _print_agent_summary(summary: dict, output_dir: Path) -> None:
         print("- Playwright failed test names:")
         for failed_test_name in playwright_failed_test_names:
             print(f"  - {failed_test_name}")
+    unclassified_api_failures = summary.get("unclassified_api_failures", [])
+    unclassified_playwright_failures = summary.get("unclassified_playwright_failures", [])
+    if unclassified_api_failures or unclassified_playwright_failures:
+        print("- Unclassified execution failures:")
+        for failed_test_name in unclassified_api_failures:
+            print(f"  - api | {failed_test_name}")
+        for failed_test_name in unclassified_playwright_failures:
+            print(f"  - playwright | {failed_test_name}")
 
     defects = summary.get("defects", [])
     if defects:
