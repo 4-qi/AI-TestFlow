@@ -22,7 +22,7 @@ This is the current Demo's discovered defect, not the only chain the one-stop wo
 
 ## Expected Generated Test Behavior
 
-The generated test `test_generated_register_rejects_short_username` sends:
+The generated API action sends:
 
 ```json
 {

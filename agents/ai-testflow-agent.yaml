@@ -55,7 +55,7 @@ reporting_contract:
     acceptance_id: AC-003
     test_case_id: TC-REG-003
     bug_id: BUG-001
-    failed_test_name: test_generated_register_rejects_short_username
+    failed_test_name: runtime generated pytest test name
 guardrails:
   - 不跳过文件读取直接下结论
   - 不把预埋业务 Bug 解释为测试脚本错误

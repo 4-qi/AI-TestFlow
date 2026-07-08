@@ -1,53 +1,75 @@
 from __future__ import annotations
 
-
-def render_generated_api_tests(test_cases: list[dict[str, str]]) -> str:
-    test_ids = {item["test_case_id"] for item in test_cases}
-    sections = [
-        HEADER,
-        _case("TC-REG-001", test_ids, test_cases, TEST_REGISTER_SUCCESS, ["注册成功"]),
-        _case("TC-REG-002", test_ids, test_cases, TEST_REGISTER_REQUIRES_USERNAME, ["用户名为空"]),
-        _case("TC-REG-003", test_ids, test_cases, TEST_REGISTER_REJECTS_SHORT_USERNAME, ["用户名长度", "小于6"]),
-        _case("TC-REG-004", test_ids, test_cases, TEST_REGISTER_REQUIRES_PASSWORD, ["密码为空"]),
-        _case("TC-REG-005", test_ids, test_cases, TEST_REGISTER_REQUIRES_MATCHING_PASSWORDS, ["确认密码", "不一致"]),
-        _case("TC-REG-006", test_ids, test_cases, TEST_REGISTER_REJECTS_DUPLICATE_USERNAME, ["重复用户名"]),
-        _case("TC-LOGIN-001", test_ids, test_cases, TEST_LOGIN_SUCCESS, ["登录成功"]),
-        _case("TC-LOGIN-002", test_ids, test_cases, TEST_LOGIN_REJECTS_WRONG_PASSWORD, ["密码错误"]),
-        _case("TC-LOGIN-003", test_ids, test_cases, TEST_LOGIN_REJECTS_UNKNOWN_USER, ["不存在", "用户名"]),
-        _case("TC-ME-001", test_ids, test_cases, TEST_ME_REQUIRES_LOGIN, ["未登录"]),
-        _case("TC-ME-002", test_ids, test_cases, TEST_ME_RETURNS_LOGGED_IN_USER, ["首页显示用户名"]),
-        _case("TC-LOGOUT-001", test_ids, test_cases, TEST_LOGOUT_CLEARS_LOGIN, ["退出登录"]),
-    ]
-    return "\n\n".join(section for section in sections if section).rstrip() + "\n"
+import json
+import pprint
+import re
+from typing import Any
 
 
-def _case(test_case_id: str, test_ids: set[str], test_cases: list[dict[str, str]], body: str, keywords: list[str]) -> str:
-    if test_case_id not in test_ids:
-        if not any(_matches_case(item, keywords) for item in test_cases):
-            return ""
-    return body
+def render_generated_api_tests(api_tests: list[dict[str, Any]], runtime: dict[str, str] | None = None) -> str:
+    runtime = runtime or {"mode": "flask_app", "app_factory": "backend.app:create_app"}
+    header = _render_api_header(runtime)
+    return header + "\n\n" + _render_api_cases(api_tests)
 
 
-def _matches_case(test_case: dict[str, str], keywords: list[str]) -> bool:
-    searchable = " ".join(
-        str(test_case.get(key, ""))
-        for key in ["title", "test_data", "expected_result", "precondition"]
-    )
-    normalized = searchable.replace(" ", "")
-    return all(keyword in normalized for keyword in keywords)
+def render_generated_playwright_tests(ui_tests: list[dict[str, Any]]) -> str:
+    payload = json.dumps(ui_tests, ensure_ascii=False, indent=2)
+    return PLAYWRIGHT_HEADER + f"\nconst cases = {payload};\n\n" + PLAYWRIGHT_RUNNER
 
 
-HEADER = '''from __future__ import annotations
+def _render_api_cases(api_tests: list[dict[str, Any]]) -> str:
+    lines: list[str] = []
+    for index, api_test in enumerate(api_tests, start=1):
+        name_source = f"{api_test.get('test_case_id', '')}_{api_test.get('name', '')}".strip("_")
+        function_name = _python_test_name(name_source or f"api_case_{index}")
+        payload = pprint.pformat(api_test, sort_dicts=False, width=100)
+        lines.append(
+            f'''def {function_name}(client):
+    case = {payload}
+    response = _send(client, case)
+    assert response.status_code == case["expected_status"]
+    body = response.get_json(silent=True) or {{}}
+    _assert_json_contains(body, case["expected_json_contains"])
+'''
+        )
+    return "\n".join(lines).rstrip() + "\n"
 
+
+def _python_test_name(value: str) -> str:
+    normalized = re.sub(r"[^0-9A-Za-z_]+", "_", value).strip("_").lower()
+    if not normalized:
+        normalized = "generated_api_case"
+    if normalized[0].isdigit():
+        normalized = f"case_{normalized}"
+    if not normalized.startswith("test_"):
+        normalized = f"test_generated_{normalized}"
+    return normalized
+
+
+def _render_api_header(runtime: dict[str, str]) -> str:
+    mode = runtime.get("mode", "flask_app")
+    if mode == "flask_app":
+        app_factory = runtime["app_factory"]
+        module_name, factory_name = app_factory.split(":", 1)
+        return FLASK_API_HEADER.replace("__MODULE_NAME__", module_name).replace("__FACTORY_NAME__", factory_name)
+    if mode == "http":
+        base_url = runtime["base_url"].rstrip("/")
+        return HTTP_API_HEADER.format(base_url=base_url)
+    raise ValueError(f"Unsupported api_test_runtime mode: {mode}")
+
+
+FLASK_API_HEADER = '''from __future__ import annotations
+
+import importlib
 from pathlib import Path
 
 import pytest
 
-from backend.app import create_app
-
 
 @pytest.fixture()
 def client(tmp_path: Path):
+    module = importlib.import_module("__MODULE_NAME__")
+    create_app = getattr(module, "__FACTORY_NAME__")
     app = create_app(
         {
             "TESTING": True,
@@ -56,212 +78,100 @@ def client(tmp_path: Path):
         }
     )
     return app.test_client()
+
+
+def _send(client, case):
+    method = case["method"].lower()
+    request = getattr(client, method)
+    if method in {"post", "put", "patch", "delete"}:
+        return request(case["path"], json=case["json_body"])
+    return request(case["path"])
+
+
+def _assert_json_contains(actual, expected):
+    for key, expected_value in expected.items():
+        assert key in actual
+        if isinstance(expected_value, dict):
+            _assert_json_contains(actual[key], expected_value)
+        else:
+            assert actual[key] == expected_value
 '''
 
 
-TEST_REGISTER_SUCCESS = '''def test_generated_register_success(client):
-    response = client.post(
-        "/api/register",
-        json={
-            "username": "testuser",
-            "password": "Password123",
-            "confirm_password": "Password123",
-        },
-    )
+HTTP_API_HEADER = '''from __future__ import annotations
 
-    assert response.status_code == 200
-    assert response.get_json()["message"] == "注册成功"
+import json
+from urllib import request
+from urllib.error import HTTPError
+
+import pytest
+
+
+@pytest.fixture()
+def client():
+    return "{base_url}"
+
+
+class HttpResponse:
+    def __init__(self, status_code, body):
+        self.status_code = status_code
+        self._body = body
+
+    def get_json(self, silent=True):
+        try:
+            return json.loads(self._body.decode("utf-8"))
+        except json.JSONDecodeError:
+            if silent:
+                return None
+            raise
+
+
+def _send(client, case):
+    url = client + case["path"]
+    data = None
+    headers = {{}}
+    if case["method"] in {{"POST", "PUT", "PATCH", "DELETE"}}:
+        data = json.dumps(case["json_body"]).encode("utf-8")
+        headers["Content-Type"] = "application/json"
+    http_request = request.Request(url, data=data, headers=headers, method=case["method"])
+    try:
+        with request.urlopen(http_request) as response:
+            return HttpResponse(response.status, response.read())
+    except HTTPError as exc:
+        return HttpResponse(exc.code, exc.read())
+
+
+def _assert_json_contains(actual, expected):
+    for key, expected_value in expected.items():
+        assert key in actual
+        if isinstance(expected_value, dict):
+            _assert_json_contains(actual[key], expected_value)
+        else:
+            assert actual[key] == expected_value
 '''
 
 
-TEST_REGISTER_REQUIRES_USERNAME = '''def test_generated_register_requires_username(client):
-    response = client.post(
-        "/api/register",
-        json={
-            "username": "",
-            "password": "Password123",
-            "confirm_password": "Password123",
-        },
-    )
-
-    assert response.status_code == 400
-    assert response.get_json()["message"] == "用户名不能为空"
-'''
+PLAYWRIGHT_HEADER = """import { test, expect } from '../../frontend/node_modules/@playwright/test';
+"""
 
 
-TEST_REGISTER_REJECTS_SHORT_USERNAME = '''def test_generated_register_rejects_short_username(client):
-    response = client.post(
-        "/api/register",
-        json={
-            "username": "abc",
-            "password": "Password123",
-            "confirm_password": "Password123",
-        },
-    )
-
-    assert response.status_code == 400
-    assert response.get_json()["message"] == "用户名长度不能少于6位"
-'''
-
-
-TEST_REGISTER_REQUIRES_PASSWORD = '''def test_generated_register_requires_password(client):
-    response = client.post(
-        "/api/register",
-        json={
-            "username": "testuser",
-            "password": "",
-            "confirm_password": "",
-        },
-    )
-
-    assert response.status_code == 400
-    assert response.get_json()["message"] == "密码不能为空"
-'''
-
-
-TEST_REGISTER_REQUIRES_MATCHING_PASSWORDS = '''def test_generated_register_requires_matching_passwords(client):
-    response = client.post(
-        "/api/register",
-        json={
-            "username": "testuser",
-            "password": "Password123",
-            "confirm_password": "Password456",
-        },
-    )
-
-    assert response.status_code == 400
-    assert response.get_json()["message"] == "两次输入的密码不一致"
-'''
-
-
-TEST_REGISTER_REJECTS_DUPLICATE_USERNAME = '''def test_generated_register_rejects_duplicate_username(client):
-    payload = {
-        "username": "testuser",
-        "password": "Password123",
-        "confirm_password": "Password123",
+PLAYWRIGHT_RUNNER = """for (const item of cases) {
+  test(item.title, async ({ page }) => {
+    for (const action of item.actions) {
+      if (action.action === 'goto') {
+        await page.goto(action.url);
+      } else if (action.action === 'fill_label') {
+        await page.getByLabel(action.label).fill(action.value);
+      } else if (action.action === 'click_role') {
+        await page.getByRole(action.role, { name: action.name }).click();
+      } else if (action.action === 'expect_text') {
+        await expect(page.getByText(action.text)).toBeVisible();
+      } else if (action.action === 'expect_url') {
+        await expect(page).toHaveURL(new RegExp(action.pattern));
+      } else {
+        throw new Error(`Unsupported UI action: ${action.action}`);
+      }
     }
-    client.post("/api/register", json=payload)
-
-    response = client.post("/api/register", json=payload)
-
-    assert response.status_code == 409
-    assert response.get_json()["message"] == "用户名已存在"
-'''
-
-
-TEST_LOGIN_SUCCESS = '''def test_generated_login_success(client):
-    client.post(
-        "/api/register",
-        json={
-            "username": "testuser",
-            "password": "Password123",
-            "confirm_password": "Password123",
-        },
-    )
-
-    response = client.post(
-        "/api/login",
-        json={
-            "username": "testuser",
-            "password": "Password123",
-        },
-    )
-
-    assert response.status_code == 200
-    assert response.get_json()["message"] == "登录成功"
-'''
-
-
-TEST_LOGIN_REJECTS_WRONG_PASSWORD = '''def test_generated_login_rejects_wrong_password(client):
-    client.post(
-        "/api/register",
-        json={
-            "username": "testuser",
-            "password": "Password123",
-            "confirm_password": "Password123",
-        },
-    )
-
-    response = client.post(
-        "/api/login",
-        json={
-            "username": "testuser",
-            "password": "WrongPassword",
-        },
-    )
-
-    assert response.status_code == 401
-    assert response.get_json()["message"] == "用户名或密码错误"
-'''
-
-
-TEST_LOGIN_REJECTS_UNKNOWN_USER = '''def test_generated_login_rejects_unknown_user(client):
-    response = client.post(
-        "/api/login",
-        json={
-            "username": "missinguser",
-            "password": "Password123",
-        },
-    )
-
-    assert response.status_code == 401
-    assert response.get_json()["message"] == "用户名或密码错误"
-'''
-
-
-TEST_ME_REQUIRES_LOGIN = '''def test_generated_me_requires_login(client):
-    response = client.get("/api/me")
-
-    assert response.status_code == 401
-    assert response.get_json()["message"] == "用户未登录"
-'''
-
-
-TEST_ME_RETURNS_LOGGED_IN_USER = '''def test_generated_me_returns_logged_in_user(client):
-    client.post(
-        "/api/register",
-        json={
-            "username": "testuser",
-            "password": "Password123",
-            "confirm_password": "Password123",
-        },
-    )
-    client.post(
-        "/api/login",
-        json={
-            "username": "testuser",
-            "password": "Password123",
-        },
-    )
-
-    response = client.get("/api/me")
-
-    assert response.status_code == 200
-    assert response.get_json()["data"] == {"username": "testuser"}
-'''
-
-
-TEST_LOGOUT_CLEARS_LOGIN = '''def test_generated_logout_clears_login(client):
-    client.post(
-        "/api/register",
-        json={
-            "username": "testuser",
-            "password": "Password123",
-            "confirm_password": "Password123",
-        },
-    )
-    client.post(
-        "/api/login",
-        json={
-            "username": "testuser",
-            "password": "Password123",
-        },
-    )
-
-    logout_response = client.post("/api/logout")
-    me_response = client.get("/api/me")
-
-    assert logout_response.status_code == 200
-    assert logout_response.get_json()["message"] == "退出登录成功"
-    assert me_response.status_code == 401
-'''
+  });
+}
+"""

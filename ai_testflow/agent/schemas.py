@@ -114,24 +114,58 @@ SCRIPT_PLAN_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
     "properties": {
-        "api_test_case_ids": {"type": "array", "items": {"type": "string"}},
-        "playwright_flows": {
+        "api_tests": {
             "type": "array",
             "items": {
                 "type": "object",
                 "additionalProperties": False,
                 "properties": {
-                    "flow_id": {"type": "string", "enum": ["PW-REG-001", "PW-AUTH-001"]},
-                    "title": {"type": "string"},
-                    "test_case_ids": {"type": "array", "items": {"type": "string"}},
-                    "steps": {"type": "array", "items": {"type": "string"}},
-                    "expected_result": {"type": "string"},
+                    "test_case_id": {"type": "string"},
+                    "name": {"type": "string"},
+                    "method": {"type": "string", "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"]},
+                    "path": {"type": "string"},
+                    "json_body": {"type": "object"},
+                    "expected_status": {"type": "integer"},
+                    "expected_json_contains": {"type": "object"},
                 },
-                "required": ["flow_id", "title", "test_case_ids", "steps", "expected_result"],
+                "required": ["test_case_id", "name", "method", "path", "json_body", "expected_status", "expected_json_contains"],
+            },
+        },
+        "ui_tests": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "test_case_id": {"type": "string"},
+                    "title": {"type": "string"},
+                    "actions": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "action": {
+                                    "type": "string",
+                                    "enum": ["goto", "fill_label", "click_role", "expect_text", "expect_url"],
+                                },
+                                "url": {"type": "string"},
+                                "label": {"type": "string"},
+                                "value": {"type": "string"},
+                                "role": {"type": "string"},
+                                "name": {"type": "string"},
+                                "text": {"type": "string"},
+                                "pattern": {"type": "string"},
+                            },
+                            "required": ["action"],
+                        },
+                    },
+                },
+                "required": ["test_case_id", "title", "actions"],
             },
         },
     },
-    "required": ["api_test_case_ids", "playwright_flows"],
+    "required": ["api_tests", "ui_tests"],
 }
 
 

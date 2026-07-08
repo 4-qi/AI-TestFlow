@@ -22,13 +22,13 @@
 
 说明：
 
-自动化测试中的短用户名相关用例为 `test_generated_register_rejects_short_username`。该用例由 CLI 根据测试用例清单生成，按 PRD-FR-003 和 REG-002 断言短用户名应注册失败。当前系统实际返回注册成功，因此该用例失败，并形成 BUG-001 的真实测试证据。
+自动化测试中的短用户名相关用例由 Script Agent 生成通用 API 动作，并由 pytest 动作执行器运行。该动作按 PRD-FR-003 和 REG-002 断言短用户名应注册失败。当前系统实际返回注册成功，因此该用例失败，并形成 BUG-001 的真实测试证据。
 
 ## 3. 命令输出
 
 ```text
 ..F.........                                                             [100%]
-FAILED ai-testflow-runs/latest/generated_api_tests.py::test_generated_register_rejects_short_username
+FAILED ai-testflow-runs/latest/generated_api_tests.py::<运行时生成的 pytest 测试名>
 1 failed, 11 passed in 0.86s
 ```
 

@@ -11,7 +11,7 @@ from ai_testflow.analyzer import analyze_prd, build_requirements, extract_requir
 from ai_testflow.config import load_config
 from ai_testflow.inspector import KNOWN_DEFECTS, run_inspection
 from ai_testflow.pytest_runner import parse_pytest_result
-from ai_testflow.test_generator import render_generated_api_tests
+from ai_testflow.test_generator import render_generated_api_tests, render_generated_playwright_tests
 
 
 def test_load_config_reads_exact_paths():
@@ -26,6 +26,7 @@ def test_load_config_reads_exact_paths():
     assert config.llm_model == "deepseek-v4-flash"
     assert config.llm_api_key_env == "DEEPSEEK_API_KEY"
     assert config.llm_base_url == "https://api.deepseek.com"
+    assert config.api_test_runtime == {"mode": "flask_app", "app_factory": "backend.app:create_app"}
     assert config.playwright_command == [
         "npm",
         "--prefix",
@@ -229,53 +230,57 @@ def test_agent_designs_requirements_and_test_cases_from_prd_analysis():
     assert [item["test_case_id"] for item in test_cases] == ["TC-REG-003", "TC-LOGIN-001"]
 
 
-def test_test_case_design_parses_rows_and_generates_api_test_script():
-    test_cases_doc = """
-| 用例编号 | 关联需求 | 标题 | 前置条件 | 测试数据 | 期望结果 | 优先级 |
-| --- | --- | --- | --- | --- | --- | --- |
-| TC-REG-003 | PRD-FR-003 | 用户名长度小于 6 位注册失败 | 用户名未存在 | `username=abc` | 注册失败，提示 `用户名长度不能少于6位` | P0 |
-"""
-
-    test_cases = extract_test_case_rows(test_cases_doc)
-    generated_script = render_generated_api_tests(test_cases)
-
-    assert test_cases == [
-        {
-            "test_case_id": "TC-REG-003",
-            "requirement_id": "PRD-FR-003",
-            "title": "用户名长度小于 6 位注册失败",
-            "precondition": "用户名未存在",
-            "test_data": "`username=abc`",
-            "expected_result": "注册失败，提示 `用户名长度不能少于6位`",
-            "priority": "P0",
-        }
-    ]
-    assert "def test_generated_register_rejects_short_username(client):" in generated_script
-    assert '"username": "abc"' in generated_script
-    assert "assert response.status_code == 400" in generated_script
-    assert 'assert response.get_json()["message"] == "用户名长度不能少于6位"' in generated_script
-    assert "def test_generated_register_success(client):" not in generated_script
-
-
-def test_generated_api_tests_use_semantic_case_matching_for_llm_ids():
-    test_cases = [
+def test_generated_api_tests_render_generic_api_actions():
+    api_tests = [
         {
             "test_case_id": "TC-003",
-            "requirement_id": "REQ-003",
-            "test_point_id": "TP-003",
-            "title": "用户名长度小于6时注册失败",
-            "precondition": "注册接口可用",
-            "test_data": "username=abc, password=Test@123, confirmPassword=Test@123",
-            "expected_result": "接口返回错误码和提示；页面显示用户名长度不足的错误信息",
-            "priority": "P0",
-            "automation_type": "both",
+            "name": "用户名长度小于6时注册失败",
+            "method": "POST",
+            "path": "/api/register",
+            "json_body": {
+                "username": "abc",
+                "password": "Password123",
+                "confirm_password": "Password123",
+            },
+            "expected_status": 400,
+            "expected_json_contains": {
+                "success": False,
+                "message": "用户名长度不能少于6位",
+            },
         }
     ]
 
-    generated_script = render_generated_api_tests(test_cases)
+    generated_script = render_generated_api_tests(api_tests)
 
-    assert "def test_generated_register_rejects_short_username(client):" in generated_script
-    assert "def test_generated_register_success(client):" not in generated_script
+    assert "def test_generated_" in generated_script
+    assert "'method': 'POST'" in generated_script
+    assert "'path': '/api/register'" in generated_script
+    assert "'username': 'abc'" in generated_script
+    assert 'importlib.import_module("backend.app")' in generated_script
+    assert 'assert response.status_code == case["expected_status"]' in generated_script
+    assert "_assert_json_contains(body, case[\"expected_json_contains\"])" in generated_script
+
+
+def test_generated_playwright_tests_render_generic_ui_actions():
+    ui_tests = [
+        {
+            "test_case_id": "TC-UI-001",
+            "title": "短用户名注册页面提示",
+            "actions": [
+                {"action": "goto", "url": "/register"},
+                {"action": "fill_label", "label": "用户名", "value": "abc"},
+                {"action": "click_role", "role": "button", "name": "注册"},
+                {"action": "expect_text", "text": "用户名长度不能少于6位"},
+            ],
+        }
+    ]
+
+    generated_script = render_generated_playwright_tests(ui_tests)
+
+    assert "../../frontend/node_modules/@playwright/test" in generated_script
+    assert "const cases =" in generated_script
+    assert "fill_label" in generated_script
+    assert "expect_text" in generated_script
 
 
 def test_script_agent_uses_structured_plan_to_generate_scripts(tmp_path):
@@ -283,14 +288,33 @@ def test_script_agent_uses_structured_plan_to_generate_scripts(tmp_path):
         def generate_json(self, **kwargs):
             assert kwargs["name"] == "script_plan"
             return {
-                "api_test_case_ids": ["TC-REG-003"],
-                "playwright_flows": [
+                "api_tests": [
                     {
-                        "flow_id": "PW-REG-001",
+                        "test_case_id": "TC-REG-003",
+                        "name": "用户名长度小于6时注册失败",
+                        "method": "POST",
+                        "path": "/api/register",
+                        "json_body": {
+                            "username": "abc",
+                            "password": "Password123",
+                            "confirm_password": "Password123",
+                        },
+                        "expected_status": 400,
+                        "expected_json_contains": {
+                            "success": False,
+                            "message": "用户名长度不能少于6位",
+                        },
+                    }
+                ],
+                "ui_tests": [
+                    {
+                        "test_case_id": "TC-REG-003",
                         "title": "注册页短用户名校验",
-                        "test_case_ids": ["TC-REG-003"],
-                        "steps": ["打开注册页", "输入短用户名", "提交注册"],
-                        "expected_result": "页面提示用户名长度不能少于6位",
+                        "actions": [
+                            {"action": "goto", "url": "/register"},
+                            {"action": "fill_label", "label": "用户名", "value": "abc"},
+                            {"action": "expect_text", "text": "用户名长度不能少于6位"},
+                        ],
                     }
                 ],
             }
@@ -312,13 +336,21 @@ def test_script_agent_uses_structured_plan_to_generate_scripts(tmp_path):
     api_target = tmp_path / "generated_api_tests.py"
     playwright_target = tmp_path / "generated_playwright_tests.spec.js"
 
-    result = run_script_agent(FakeClient(), "prompt", test_cases, api_target, playwright_target)
+    result = run_script_agent(
+        FakeClient(),
+        "prompt",
+        test_cases,
+        "backend source",
+        {"mode": "flask_app", "app_factory": "backend.app:create_app"},
+        api_target,
+        playwright_target,
+    )
 
-    assert result["script_plan"]["api_test_case_ids"] == ["TC-REG-003"]
-    assert "def test_generated_register_rejects_short_username(client):" in api_target.read_text(encoding="utf-8")
+    assert result["script_plan"]["api_tests"][0]["test_case_id"] == "TC-REG-003"
+    assert "'path': '/api/register'" in api_target.read_text(encoding="utf-8")
     playwright_text = playwright_target.read_text(encoding="utf-8")
-    assert "short username registration should be rejected" in playwright_text
-    assert "../../frontend/node_modules/@playwright/test" in playwright_text
+    assert "const cases =" in playwright_text
+    assert "fill_label" in playwright_text
 
 
 def test_known_defect_maps_short_username_failure_to_bug():

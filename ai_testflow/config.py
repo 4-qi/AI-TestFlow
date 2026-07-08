@@ -27,6 +27,7 @@ class TestFlowConfig:
     llm_model: str
     llm_api_key_env: str
     llm_base_url: str | None
+    api_test_runtime: dict[str, str]
 
 
 REQUIRED_KEYS = {
@@ -58,6 +59,9 @@ def load_config(config_path: str | Path = "ai-testflow.yml") -> TestFlowConfig:
     llm = raw.get("llm", {})
     if not isinstance(llm, dict):
         raise ValueError("Config key llm must be a mapping")
+    api_test_runtime = raw.get("api_test_runtime", {"mode": "flask_app", "app_factory": "backend.app:create_app"})
+    if not isinstance(api_test_runtime, dict):
+        raise ValueError("Config key api_test_runtime must be a mapping")
 
     return TestFlowConfig(
         project_name=str(raw["project_name"]),
@@ -79,4 +83,5 @@ def load_config(config_path: str | Path = "ai-testflow.yml") -> TestFlowConfig:
         llm_model=str(llm.get("model", "deepseek-v4-flash")),
         llm_api_key_env=str(llm.get("api_key_env", "DEEPSEEK_API_KEY")),
         llm_base_url=str(llm["base_url"]) if "base_url" in llm else None,
+        api_test_runtime={str(key): str(value) for key, value in api_test_runtime.items()},
     )

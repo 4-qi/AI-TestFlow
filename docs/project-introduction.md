@@ -399,13 +399,9 @@ TC-REG-003 用户名长度小于 6 位注册失败
 ai-testflow-runs/latest/generated_api_tests.py
 ```
 
-插件根据测试用例编号和接口测试模板生成 pytest 脚本。
+插件根据 Script Agent 生成的通用 API 动作生成 pytest 脚本。
 
-其中 `TC-REG-003` 会生成：
-
-```text
-test_generated_register_rejects_short_username
-```
+测试函数名由运行时动作自动生成，不要求大模型输出固定函数名。
 
 ### 8.5 第五步：执行测试
 

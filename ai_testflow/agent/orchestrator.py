@@ -72,6 +72,8 @@ def run_agent_workflow(
         client,
         _prompt(prompts_dir, "script_agent.md"),
         test_case_design["test_cases"],
+        backend_source,
+        config.api_test_runtime,
         project_root / config.generated_tests_path,
         project_root / config.generated_playwright_tests_path,
     )
@@ -125,7 +127,12 @@ def run_agent_workflow(
     bug_report = run_bug_agent(client, _prompt(prompts_dir, "bug_agent.md"), report_context)
     _mark_stage(workflow_state, "Bug Agent", "completed")
 
-    status = "defects_found" if defect_analysis.get("defects") else "passed"
+    if defect_analysis.get("defects"):
+        status = "defects_found"
+    elif pytest_result.exit_code != 0:
+        status = "execution_failed"
+    else:
+        status = "passed"
     workflow_state["status"] = status
     summary = {
         "project_name": config.project_name,
@@ -133,6 +140,7 @@ def run_agent_workflow(
         "requirements_count": len(requirement_breakdown["requirements"]),
         "test_points_count": len(requirement_breakdown["test_points"]),
         "test_cases_count": len(test_case_design["test_cases"]),
+        "pytest_exit_code": pytest_result.exit_code,
         "passed_tests": pytest_result.passed_tests,
         "failed_tests": pytest_result.failed_tests,
         "failed_test_names": pytest_result.failed_test_names,

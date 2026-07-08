@@ -4,6 +4,9 @@ llm:
   model: deepseek-v4-flash
   api_key_env: DEEPSEEK_API_KEY
   base_url: https://api.deepseek.com
+api_test_runtime:
+  mode: flask_app
+  app_factory: backend.app:create_app
 prd_path: docs/prd.md
 requirement_spec_path: docs/samples/requirement-spec.sample.md
 test_cases_path: docs/samples/test-cases.sample.md
