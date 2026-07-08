@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from ai_testflow.agent.llm_client import LlmSettings, OpenAILlmClient, _unwrap_named_object
-from ai_testflow.agent.agents.script_agent import _align_api_expectations_with_test_cases, run_script_agent
+from ai_testflow.agent.agents.script_agent import _align_api_expectations_with_test_cases, _stable_ui_tests, run_script_agent
 from ai_testflow.agent.orchestrator import _add_fallback_defects_for_failed_tests, _filter_defects_to_failed_tests
 from ai_testflow.agent_designer import design_requirements_from_prd, design_test_cases_from_requirements
 from ai_testflow.analyzer import analyze_prd, build_requirements, extract_requirement_rows, extract_test_case_rows
@@ -321,6 +321,9 @@ def test_generated_playwright_tests_render_generic_ui_actions():
     assert "const cases =" in generated_script
     assert "fill_label" in generated_script
     assert "expect_text" in generated_script
+    assert "getByLabel(action.label, { exact: true })" in generated_script
+    assert "getByRole(action.role, { name: action.name, exact: true })" in generated_script
+    assert "getByText(action.text, { exact: true }).first()" in generated_script
 
 
 def test_script_agent_uses_structured_plan_to_generate_scripts(tmp_path):
@@ -509,6 +512,74 @@ def test_script_agent_drops_unanchored_error_schema_assertions():
     )
 
     assert aligned["api_tests"][0]["expected_json_contains"] == {}
+
+
+def test_script_agent_treats_blank_username_as_empty_when_backend_strips():
+    script_plan = {
+        "api_tests": [
+            {
+                "test_case_id": "TC-005",
+                "name": "注册-用户名为空格",
+                "setup_api_actions": [],
+                "method": "POST",
+                "path": "/api/register",
+                "json_body": {
+                    "username": " ",
+                    "password": "Test1234",
+                    "confirm_password": "Test1234",
+                },
+                "expected_status": 200,
+                "expected_json_contains": {
+                    "success": True,
+                },
+            }
+        ],
+        "ui_tests": [],
+    }
+    test_cases = [
+        {
+            "test_case_id": "TC-005",
+            "title": "注册-用户名为空格",
+            "expected_result": "注册成功",
+        }
+    ]
+
+    aligned = _align_api_expectations_with_test_cases(
+        script_plan,
+        test_cases,
+        "用户注册时，用户名不能为空。",
+        'username = str(payload.get("username", "")).strip()',
+    )
+
+    assert aligned["api_tests"][0]["expected_status"] == 400
+    assert aligned["api_tests"][0]["expected_json_contains"]["success"] is False
+
+
+def test_script_agent_keeps_only_stable_ui_smoke_tests():
+    ui_tests = [
+        {
+            "test_case_id": "TC-001",
+            "title": "注册页面元素显示",
+            "actions": [
+                {"action": "goto", "url": "/register"},
+                {"action": "expect_text", "text": "用户名"},
+            ],
+        },
+        {
+            "test_case_id": "TC-007",
+            "title": "短用户名注册失败",
+            "actions": [
+                {"action": "goto", "url": "/register"},
+                {"action": "fill_label", "label": "用户名", "value": "abc"},
+                {"action": "click_role", "role": "button", "name": "注册"},
+                {"action": "expect_text", "text": "用户名长度必须大于等于6位"},
+            ],
+        },
+    ]
+
+    stable_tests = _stable_ui_tests(ui_tests)
+
+    assert [item["test_case_id"] for item in stable_tests] == ["TC-001"]
 
 
 def test_script_agent_does_not_treat_precondition_absence_as_negative_case():

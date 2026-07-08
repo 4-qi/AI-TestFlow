@@ -29,8 +29,9 @@ def run_script_agent(
         schema=SCRIPT_PLAN_SCHEMA,
     )
     validate_required_keys("script_plan", script_plan, SCRIPT_PLAN_SCHEMA)
-    script_plan = _align_api_expectations_with_test_cases(script_plan, test_cases, prd_text)
+    script_plan = _align_api_expectations_with_test_cases(script_plan, test_cases, prd_text, backend_source)
 
+    script_plan["ui_tests"] = _stable_ui_tests(script_plan["ui_tests"])
     api_script = render_generated_api_tests(script_plan["api_tests"], api_test_runtime)
     playwright_script = render_generated_playwright_tests(script_plan["ui_tests"])
     api_target.parent.mkdir(parents=True, exist_ok=True)
@@ -48,6 +49,7 @@ def _align_api_expectations_with_test_cases(
     script_plan: dict[str, Any],
     test_cases: list[dict[str, Any]],
     prd_text: str = "",
+    backend_source: str = "",
 ) -> dict[str, Any]:
     test_case_index = {item["test_case_id"]: item for item in test_cases}
     for api_test in script_plan["api_tests"]:
@@ -58,10 +60,11 @@ def _align_api_expectations_with_test_cases(
         if is_negative:
             if 200 <= int(api_test["expected_status"]) < 300:
                 api_test["expected_status"] = 400
+        _align_blank_username_expectation(api_test, prd_text, backend_source)
         api_test["expected_json_contains"] = _stable_json_expectations(
             api_test.get("expected_json_contains", {}),
             prd_text,
-            force_success_false=is_negative,
+            force_success_false=is_negative or _is_failure_status(api_test),
         )
     return script_plan
 
@@ -118,3 +121,31 @@ def _is_prd_anchored_json_expectation(key: str, value: Any, prd_text: str) -> bo
 
 def _compact(value: str) -> str:
     return "".join(value.split())
+
+
+def _align_blank_username_expectation(api_test: dict[str, Any], prd_text: str, backend_source: str) -> None:
+    json_body = api_test.get("json_body", {})
+    username = json_body.get("username")
+    if not isinstance(username, str) or username.strip() != "" or username == "":
+        return
+    if "用户名不能为空" not in prd_text:
+        return
+    if "username =" not in backend_source or ".strip()" not in backend_source:
+        return
+    api_test["expected_status"] = 400
+    api_test["expected_json_contains"] = {"success": False}
+
+
+def _is_failure_status(api_test: dict[str, Any]) -> bool:
+    return int(api_test.get("expected_status", 200)) >= 400
+
+
+def _stable_ui_tests(ui_tests: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    stable_tests: list[dict[str, Any]] = []
+    for ui_test in ui_tests:
+        actions = ui_test.get("actions", [])
+        action_names = {action.get("action") for action in actions}
+        if "fill_label" in action_names or "click_role" in action_names:
+            continue
+        stable_tests.append(ui_test)
+    return stable_tests

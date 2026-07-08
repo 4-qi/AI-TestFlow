@@ -168,11 +168,11 @@ PLAYWRIGHT_RUNNER = """for (const item of cases) {
       if (action.action === 'goto') {
         await page.goto(action.url);
       } else if (action.action === 'fill_label') {
-        await page.getByLabel(action.label).fill(action.value);
+        await page.getByLabel(action.label, { exact: true }).fill(action.value);
       } else if (action.action === 'click_role') {
-        await page.getByRole(action.role, { name: action.name }).click();
+        await page.getByRole(action.role, { name: action.name, exact: true }).click();
       } else if (action.action === 'expect_text') {
-        await expect(page.getByText(action.text)).toBeVisible();
+        await expect(page.getByText(action.text, { exact: true }).first()).toBeVisible();
       } else if (action.action === 'expect_url') {
         await expect(page).toHaveURL(new RegExp(action.pattern));
       } else {
