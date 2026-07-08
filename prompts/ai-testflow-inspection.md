@@ -9,11 +9,12 @@
 3. 读取 `docs/test-cases.md`，确认测试用例与需求编号的追踪关系。
 4. 读取 `backend/app.py`，确认当前后端真实实现。
 5. 读取 `backend/tests/test_api.py`，确认自动化测试真实断言。
-6. 运行 `conda run -n AI-TestFlow python -m pytest -q backend/tests`。
-7. 分析 pytest 输出中的失败用例。
-8. 将失败用例回溯到 `PRD-FR-003`、`REG-002`、`AC-003`、`TC-REG-003` 和 `BUG-001`。
-9. 如执行结果与 `docs/api-test-execution.md`、`docs/test-report.md`、`docs/bug-report.md` 不一致，请更新这些文档。
-10. 最后输出本轮 AI 检验结论。
+6. 运行 `conda run -n AI-TestFlow python -m ai_testflow run`。
+7. 读取 `ai-testflow-runs/latest/inspection-summary.json`、`pytest-output.txt`、`traceability.json`、`generated-test-report.md` 和 `generated-bug-report.md`。
+8. 分析 pytest 输出中的失败用例。
+9. 将失败用例回溯到 `PRD-FR-003`、`REG-002`、`AC-003`、`TC-REG-003` 和 `BUG-001`。
+10. 如执行结果与 `docs/api-test-execution.md`、`docs/test-report.md`、`docs/bug-report.md` 不一致，请更新这些文档。
+11. 最后输出本轮 AI 检验结论。
 
 要求：
 
@@ -28,4 +29,3 @@
 ```text
 本轮 AI 检验确认：登录注册 Demo 主流程可运行；PRD-FR-003 对应的用户名长度规则未在后端注册接口实现；TC-REG-003 自动化测试失败；该失败已形成 BUG-001。
 ```
-

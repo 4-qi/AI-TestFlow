@@ -17,9 +17,9 @@
 
 ## 2. 当前原型的 AI 使用方式
 
-当前项目的 AI 检验流程是“对话式插件原型”。
+当前项目的 AI 检验流程是“CLI 插件原型”。
 
-也就是说，现在还不是一个已经打包发布的浏览器插件、IDE 插件或测试平台插件，而是通过对话方式指引 AI 完成自动化测试插件应该完成的事情。
+也就是说，现在还不是一个已经打包发布的浏览器插件、IDE 插件或测试平台插件，而是通过一条 CLI 命令完成自动化测试插件应该完成的事情。
 
 AI 在这个流程中扮演的角色是：
 
@@ -34,7 +34,13 @@ PRD 分析器
 
 ## 3. AI 检验流程总链路
 
-AI 应按以下链路执行：
+AI 或用户应先运行 CLI 入口：
+
+```bash
+conda run -n AI-TestFlow python -m ai_testflow run
+```
+
+CLI 插件内部按以下链路执行：
 
 ```text
 读取 PRD
@@ -45,9 +51,15 @@ AI 应按以下链路执行：
   -> 运行 pytest
   -> 分析失败用例
   -> 对齐需求编号
-  -> 更新执行记录
-  -> 更新测试报告
-  -> 更新 Bug 单
+  -> 生成执行记录
+  -> 生成测试报告
+  -> 生成 Bug 单
+```
+
+运行产物输出到：
+
+```text
+ai-testflow-runs/latest/
 ```
 
 ## 4. AI 必须读取的文件
@@ -83,10 +95,27 @@ docs/bug-report.md
 在项目根目录执行：
 
 ```bash
+conda run -n AI-TestFlow python -m ai_testflow run
+```
+
+CLI 内部会运行：
+
+```bash
 conda run -n AI-TestFlow python -m pytest -q backend/tests
 ```
 
-当前系统保留预埋缺陷，因此该命令的真实结果应包含 1 条失败用例：
+当前系统保留预埋缺陷，因此 CLI 摘要应包含：
+
+```text
+Status: defects_found
+Passed tests: 11
+Failed tests: 1
+Bug: BUG-001
+Requirement: PRD-FR-003
+Test case: TC-REG-003
+```
+
+pytest 真实结果应包含：
 
 ```text
 1 failed, 11 passed
@@ -141,14 +170,16 @@ PRD-FR-003 -> REG-002 -> AC-003 -> TC-REG-003 -> BUG-001
 AI 完成检验后，应输出以下内容：
 
 1. 测试命令。
-2. pytest 真实输出摘要。
-3. 失败用例名称。
-4. 失败断言。
-5. 关联需求编号。
-6. 关联测试用例编号。
-7. 关联 Bug 编号。
-8. 需要更新的文档路径。
-9. 项目当前结论。
+2. CLI 真实输出摘要。
+3. pytest 真实输出摘要。
+4. 失败用例名称。
+5. 失败断言。
+6. 关联需求编号。
+7. 关联测试用例编号。
+8. 关联 Bug 编号。
+9. 生成产物路径。
+10. 需要更新的文档路径。
+11. 项目当前结论。
 
 标准结论格式：
 
@@ -170,11 +201,12 @@ AI 完成检验后，应输出以下内容：
 3. 读取 docs/test-cases.md，确认测试用例与需求编号的追踪关系。
 4. 读取 backend/app.py，确认当前后端真实实现。
 5. 读取 backend/tests/test_api.py，确认自动化测试真实断言。
-6. 运行 conda run -n AI-TestFlow python -m pytest -q backend/tests。
-7. 分析 pytest 输出中的失败用例。
-8. 将失败用例回溯到 PRD-FR-003、REG-002、AC-003、TC-REG-003 和 BUG-001。
-9. 如执行结果与 docs/api-test-execution.md、docs/test-report.md、docs/bug-report.md 不一致，请更新这些文档。
-10. 最后输出本轮 AI 检验结论。
+6. 运行 conda run -n AI-TestFlow python -m ai_testflow run。
+7. 读取 ai-testflow-runs/latest/inspection-summary.json、pytest-output.txt、traceability.json、generated-test-report.md 和 generated-bug-report.md。
+8. 分析 pytest 输出中的失败用例。
+9. 将失败用例回溯到 PRD-FR-003、REG-002、AC-003、TC-REG-003 和 BUG-001。
+10. 如执行结果与 docs/api-test-execution.md、docs/test-report.md、docs/bug-report.md 不一致，请更新这些文档。
+11. 最后输出本轮 AI 检验结论。
 
 要求：
 
@@ -197,9 +229,9 @@ AI 完成检验后，应输出以下内容：
 
 ## 10. 后续如何升级成真正插件
 
-当前入口是对话式流程。后续可以升级为以下形式：
+当前入口是 CLI 插件流程。后续可以升级为以下形式：
 
-1. 命令行入口：`ai-testflow run`
+1. 安装为系统命令：`ai-testflow run`
 2. Web 页面入口：上传 PRD 后点击开始检验。
 3. IDE 插件入口：在项目中右键运行 AI 检验。
 4. CI 入口：提交代码后自动运行 AI 检验。
@@ -209,4 +241,3 @@ AI 完成检验后，应输出以下内容：
 ```text
 读需求 -> 读实现 -> 跑测试 -> 对比期望和实际 -> 生成报告 -> 生成 Bug 单
 ```
-

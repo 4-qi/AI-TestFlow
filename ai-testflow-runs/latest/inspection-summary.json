@@ -1,0 +1,14 @@
+{
+  "project_name": "AI-TestFlow",
+  "status": "defects_found",
+  "pytest_exit_code": 1,
+  "passed_tests": 11,
+  "failed_tests": 1,
+  "failed_test_names": [
+    "test_register_rejects_short_username_by_requirement"
+  ],
+  "bug_id": "BUG-001",
+  "requirement_id": "PRD-FR-003",
+  "test_case_id": "TC-REG-003",
+  "output_dir": "ai-testflow-runs/latest"
+}

@@ -1,0 +1,21 @@
+{
+  "requirement_id": "PRD-FR-003",
+  "rule_id": "REG-002",
+  "acceptance_id": "AC-003",
+  "test_case_id": "TC-REG-003",
+  "bug_id": "BUG-001",
+  "failed_test_name": "test_register_rejects_short_username_by_requirement",
+  "expected": "用户名长度小于 6 位时注册失败，HTTP 400",
+  "actual": "用户名长度小于 6 位时注册成功，HTTP 200",
+  "status": "failed",
+  "source_files_read": [
+    "backend/app.py",
+    "backend/tests/test_api.py",
+    "docs/api-test-execution.md",
+    "docs/bug-report.md",
+    "docs/prd.md",
+    "docs/requirement-spec.md",
+    "docs/test-cases.md",
+    "docs/test-report.md"
+  ]
+}

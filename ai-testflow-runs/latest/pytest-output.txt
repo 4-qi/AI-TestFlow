@@ -1,0 +1,26 @@
+.....F......                                                             [100%]
+=================================== FAILURES ===================================
+_____________ test_register_rejects_short_username_by_requirement ______________
+
+client = <FlaskClient <Flask 'backend.app'>>
+
+    def test_register_rejects_short_username_by_requirement(client):
+        response = client.post(
+            "/api/register",
+            json={
+                "username": "abc",
+                "password": "Password123",
+                "confirm_password": "Password123",
+            },
+        )
+    
+>       assert response.status_code == 400
+E       assert 200 == 400
+E        +  where 200 = <WrapperTestResponse streamed [200 OK]>.status_code
+
+backend/tests/test_api.py:106: AssertionError
+=========================== short test summary info ============================
+FAILED backend/tests/test_api.py::test_register_rejects_short_username_by_requirement
+1 failed, 11 passed in 1.36s
+
+ERROR conda.cli.main_run:execute(142): `conda run python -m pytest -q backend/tests` failed. (See above for error)

@@ -17,7 +17,13 @@ PRD 文本
   -> Bug 系统推送
 ```
 
-最小原型先不接入真实公司系统，使用本仓库的登录注册 Demo、Markdown 文档和本地测试脚本验证流程。
+最小原型先不接入真实公司系统，使用本仓库的登录注册 Demo、Markdown 文档、本地测试脚本和 CLI 插件入口验证流程。
+
+CLI 插件入口：
+
+```bash
+conda run -n AI-TestFlow python -m ai_testflow run
+```
 
 ## 2. 角色与输入输出
 
@@ -26,7 +32,7 @@ PRD 文本
 | PRD 解析 | `docs/prd.md` | 功能需求、非功能需求、接口范围、验收标准 |
 | 需求结构化 | PRD 解析结果 | 需求编号、模块、规则、测试重点 |
 | 用例生成 | 结构化需求 | `docs/test-cases.md` |
-| 自动化执行 | 测试用例、接口规格、被测系统地址 | `docs/api-test-execution.md` |
+| 自动化执行 | 测试用例、接口规格、被测系统地址 | `ai-testflow-runs/latest/pytest-output.txt` |
 | 手工记录辅助 | 页面用例、页面地址 | `docs/manual-test-execution.md` |
 | 报告生成 | 执行记录、缺陷记录 | `docs/test-report.md` |
 | Bug 单生成 | 失败用例、实际结果、期望结果 | `docs/bug-report.md` |
@@ -90,8 +96,10 @@ PRD-FR-003 -> REG-002 -> AC-003 -> TC-REG-003 -> BUG-001
 使用 pytest 执行 `backend/tests/test_api.py`：
 
 ```bash
-conda run -n AI-TestFlow python -m pytest -q backend/tests
+conda run -n AI-TestFlow python -m ai_testflow run
 ```
+
+CLI 插件内部调用 pytest，并把真实输出保存到 `ai-testflow-runs/latest/pytest-output.txt`。
 
 ### 3.5 报告生成模块
 
@@ -104,7 +112,7 @@ conda run -n AI-TestFlow python -m pytest -q backend/tests
 
 本项目最小实现：
 
-根据 `docs/api-test-execution.md` 和 `docs/manual-test-execution.md` 生成 `docs/test-report.md`。
+根据 pytest 输出和追踪关系生成 `ai-testflow-runs/latest/generated-test-report.md`。
 
 ### 3.6 Bug 单生成模块
 
@@ -117,7 +125,7 @@ conda run -n AI-TestFlow python -m pytest -q backend/tests
 
 本项目最小实现：
 
-根据 TC-REG-003 的执行结果生成 `docs/bug-report.md`。
+根据 TC-REG-003 的执行结果生成 `ai-testflow-runs/latest/generated-bug-report.md`。
 
 ### 3.7 Bug 推送模块
 
@@ -138,9 +146,11 @@ docs/prd.md
   -> docs/requirement-spec.md
   -> docs/test-cases.md
   -> backend/tests/test_api.py
-  -> docs/api-test-execution.md
-  -> docs/test-report.md
-  -> docs/bug-report.md
+  -> ai-testflow.yml
+  -> python -m ai_testflow run
+  -> ai-testflow-runs/latest/inspection-summary.json
+  -> ai-testflow-runs/latest/generated-test-report.md
+  -> ai-testflow-runs/latest/generated-bug-report.md
 ```
 
 ## 5. 原型任务拆解
@@ -150,10 +160,10 @@ docs/prd.md
 | PLUGIN-TASK-001 | 读取 PRD 文本 | 使用 Markdown 文档作为输入 |
 | PLUGIN-TASK-002 | 提取需求编号和规则 | 在需求规格中结构化呈现 |
 | PLUGIN-TASK-003 | 生成测试用例 | 已输出测试用例文档 |
-| PLUGIN-TASK-004 | 执行接口测试 | 已实现 pytest 接口测试 |
-| PLUGIN-TASK-005 | 汇总执行结果 | 已输出接口执行记录 |
-| PLUGIN-TASK-006 | 生成测试报告 | 已输出测试报告 |
-| PLUGIN-TASK-007 | 生成 Bug 单 | 已输出 BUG-001 |
+| PLUGIN-TASK-004 | 执行接口测试 | 已实现 CLI 调用 pytest |
+| PLUGIN-TASK-005 | 汇总执行结果 | 已输出 `inspection-summary.json` |
+| PLUGIN-TASK-006 | 生成测试报告 | 已输出 `generated-test-report.md` |
+| PLUGIN-TASK-007 | 生成 Bug 单 | 已输出 `generated-bug-report.md` |
 | PLUGIN-TASK-008 | 推送 Bug | 当前以 Markdown 模拟外部系统记录 |
 
 ## 6. 后续扩展方向
@@ -174,4 +184,3 @@ docs/prd.md
 4. 能识别实际结果与期望结果不一致的问题。
 5. 能生成标准 Bug 单。
 6. 能说明后续接入正式插件的模块边界。
-

@@ -1,0 +1,93 @@
+from __future__ import annotations
+
+import json
+
+from ai_testflow.config import load_config
+from ai_testflow.inspector import TRACEABILITY, run_inspection
+from ai_testflow.pytest_runner import parse_pytest_result
+
+
+def test_load_config_reads_exact_paths():
+    config = load_config("ai-testflow.yml")
+
+    assert config.project_name == "AI-TestFlow"
+    assert str(config.prd_path) == "docs/prd.md"
+    assert str(config.output_dir) == "ai-testflow-runs/latest"
+    assert config.pytest_command == [
+        "conda",
+        "run",
+        "-n",
+        "AI-TestFlow",
+        "python",
+        "-m",
+        "pytest",
+        "-q",
+        "backend/tests",
+    ]
+
+
+def test_parse_pytest_result_extracts_failed_test_mapping():
+    output = """
+.....F......                                                             [100%]
+FAILED backend/tests/test_api.py::test_register_rejects_short_username_by_requirement
+1 failed, 11 passed in 0.78s
+"""
+
+    result = parse_pytest_result(["pytest"], 1, output, "", output)
+
+    assert result.passed_tests == 11
+    assert result.failed_tests == 1
+    assert result.failed_test_names == ["test_register_rejects_short_username_by_requirement"]
+
+
+def test_traceability_maps_short_username_failure_to_bug():
+    assert TRACEABILITY["requirement_id"] == "PRD-FR-003"
+    assert TRACEABILITY["rule_id"] == "REG-002"
+    assert TRACEABILITY["acceptance_id"] == "AC-003"
+    assert TRACEABILITY["test_case_id"] == "TC-REG-003"
+    assert TRACEABILITY["bug_id"] == "BUG-001"
+
+
+def test_run_inspection_writes_stable_summary(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    for path in [
+        "docs/prd.md",
+        "docs/requirement-spec.md",
+        "docs/test-cases.md",
+        "backend/app.py",
+        "backend/tests/test_api.py",
+        "docs/api-test-execution.md",
+        "docs/test-report.md",
+        "docs/bug-report.md",
+    ]:
+        file_path = tmp_path / path
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        file_path.write_text(path, encoding="utf-8")
+
+    config_text = """project_name: AI-TestFlow
+prd_path: docs/prd.md
+requirement_spec_path: docs/requirement-spec.md
+test_cases_path: docs/test-cases.md
+backend_source_path: backend/app.py
+pytest_path: backend/tests
+pytest_command:
+  - python
+  - -c
+  - import sys; print('FAILED backend/tests/test_api.py::test_register_rejects_short_username_by_requirement'); print('1 failed, 11 passed in 0.78s'); sys.exit(1)
+api_execution_report_path: docs/api-test-execution.md
+test_report_path: docs/test-report.md
+bug_report_path: docs/bug-report.md
+output_dir: ai-testflow-runs/latest
+"""
+    (tmp_path / "ai-testflow.yml").write_text(config_text, encoding="utf-8")
+
+    config = load_config("ai-testflow.yml")
+    result = run_inspection(config, tmp_path)
+    summary = json.loads((tmp_path / "ai-testflow-runs/latest/inspection-summary.json").read_text(encoding="utf-8"))
+
+    assert result.summary["status"] == "defects_found"
+    assert summary["failed_tests"] == 1
+    assert summary["passed_tests"] == 11
+    assert summary["bug_id"] == "BUG-001"
+    assert (tmp_path / "ai-testflow-runs/latest/pytest-output.txt").exists()
+

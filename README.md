@@ -9,6 +9,8 @@
 ```text
 AI-TestFlow/
   AI_TESTFLOW_ENTRYPOINT.md
+  ai-testflow.yml
+  ai_testflow/
   backend/
     app.py
     requirements.txt
@@ -29,6 +31,8 @@ AI-TestFlow/
     plugin-prototype-design.md
   prompts/
     ai-testflow-inspection.md
+  tests/
+    test_ai_testflow.py
 ```
 
 ## 2. 环境
@@ -60,7 +64,42 @@ Node v22.19.0
 npm 10.9.3
 ```
 
-## 3. 安装依赖
+## 3. CLI 插件运行方式
+
+在项目根目录执行：
+
+```bash
+conda run -n AI-TestFlow python -m ai_testflow run
+```
+
+该命令会自动完成：
+
+1. 读取 `ai-testflow.yml`。
+2. 读取 PRD、需求规格、测试用例、后端代码和自动化测试。
+3. 运行 `conda run -n AI-TestFlow python -m pytest -q backend/tests`。
+4. 捕获真实 pytest 输出。
+5. 将失败用例回溯到 `PRD-FR-003 -> REG-002 -> AC-003 -> TC-REG-003 -> BUG-001`。
+6. 生成结构化 JSON 摘要和 Markdown 报告。
+
+运行产物输出到：
+
+```text
+ai-testflow-runs/latest/
+```
+
+核心产物：
+
+```text
+inspection-summary.json
+pytest-output.txt
+traceability.json
+generated-test-report.md
+generated-bug-report.md
+```
+
+说明：即使检测到 BUG-001，CLI 插件命令也会返回成功。这里的含义是“插件执行成功，并发现缺陷”。
+
+## 4. 安装依赖
 
 后端依赖：
 
@@ -75,7 +114,7 @@ cd frontend
 npm install
 ```
 
-## 4. 启动后端
+## 5. 启动 Demo 后端
 
 在项目根目录执行：
 
@@ -93,7 +132,7 @@ http://127.0.0.1:5000
 
 后端启动后会一直占用当前终端，这是正常现象。看到 `Backend URL: http://127.0.0.1:5000` 后，保持该终端运行，再打开一个新终端启动前端。停止后端时，在后端终端按 `Ctrl + C`。
 
-## 5. 启动前端
+## 6. 启动 Demo 前端
 
 在 `frontend` 目录执行：
 
@@ -107,7 +146,7 @@ npm run dev
 http://127.0.0.1:5173
 ```
 
-## 6. 运行测试
+## 7. 运行底层 pytest
 
 在项目根目录执行：
 
@@ -123,7 +162,19 @@ conda run -n AI-TestFlow python -m pytest -q backend/tests
 
 说明：当前失败用例是预埋缺陷 BUG-001 的真实测试结果。项目用于演示从需求到测试失败再到 Bug 单的完整流程，因此该失败是预期业务现象，不是测试脚本写错。
 
-## 7. 预埋缺陷
+插件自身单元测试：
+
+```bash
+conda run -n AI-TestFlow python -m pytest -q tests
+```
+
+已验证结果：
+
+```text
+4 passed
+```
+
+## 8. 预埋缺陷
 
 需求要求：
 
@@ -143,7 +194,7 @@ conda run -n AI-TestFlow python -m pytest -q backend/tests
 PRD-FR-003 -> REG-002 -> AC-003 -> TC-REG-003 -> BUG-001
 ```
 
-## 8. 文档入口
+## 9. 文档入口
 
 | 文档 | 路径 |
 | --- | --- |
@@ -159,7 +210,7 @@ PRD-FR-003 -> REG-002 -> AC-003 -> TC-REG-003 -> BUG-001
 | Bug 单 | `docs/bug-report.md` |
 | 插件原型设计 | `docs/plugin-prototype-design.md` |
 
-## 9. AI 检验入口
+## 10. AI 检验入口
 
 如果要让 AI 按自动化测试插件流程检验本项目，从根目录入口开始：
 

@@ -1,0 +1,21 @@
+project_name: AI-TestFlow
+prd_path: docs/prd.md
+requirement_spec_path: docs/requirement-spec.md
+test_cases_path: docs/test-cases.md
+backend_source_path: backend/app.py
+pytest_path: backend/tests
+pytest_command:
+  - conda
+  - run
+  - -n
+  - AI-TestFlow
+  - python
+  - -m
+  - pytest
+  - -q
+  - backend/tests
+api_execution_report_path: docs/api-test-execution.md
+test_report_path: docs/test-report.md
+bug_report_path: docs/bug-report.md
+output_dir: ai-testflow-runs/latest
+
