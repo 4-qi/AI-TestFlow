@@ -13,6 +13,8 @@ class TestFlowConfig:
     backend_source_path: Path
     pytest_path: Path
     pytest_command: list[str]
+    generated_tests_path: Path
+    generated_pytest_command: list[str]
     api_execution_report_path: Path
     test_report_path: Path
     bug_report_path: Path
@@ -27,6 +29,8 @@ REQUIRED_KEYS = {
     "backend_source_path",
     "pytest_path",
     "pytest_command",
+    "generated_tests_path",
+    "generated_pytest_command",
     "api_execution_report_path",
     "test_report_path",
     "bug_report_path",
@@ -49,6 +53,8 @@ def load_config(config_path: str | Path = "ai-testflow.yml") -> TestFlowConfig:
         backend_source_path=Path(str(raw["backend_source_path"])),
         pytest_path=Path(str(raw["pytest_path"])),
         pytest_command=[str(item) for item in raw["pytest_command"]],
+        generated_tests_path=Path(str(raw["generated_tests_path"])),
+        generated_pytest_command=[str(item) for item in raw["generated_pytest_command"]],
         api_execution_report_path=Path(str(raw["api_execution_report_path"])),
         test_report_path=Path(str(raw["test_report_path"])),
         bug_report_path=Path(str(raw["bug_report_path"])),
@@ -92,4 +98,3 @@ def _parse_simple_yaml(text: str) -> dict[str, str | list[str]]:
             current_list_key = key
 
     return data
-

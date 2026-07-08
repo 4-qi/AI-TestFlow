@@ -83,7 +83,7 @@ def build_bug_report(summary: dict[str, Any], traceability: dict[str, Any], pyte
 
 ## 3. CLI 检验结论
 
-`python -m ai_testflow run` 已完成执行，插件本身执行成功，并发现 `{defect["bug_id"]}`。该缺陷来自真实自动化测试失败，不是测试脚本通过后人工标记的问题。
+`python -m ai_testflow run-all` 已完成执行，插件本身执行成功，并发现 `{defect["bug_id"]}`。该缺陷来自真实自动化测试失败，不是测试脚本通过后人工标记的问题。
 """
         )
     return "\n".join(defect_sections)

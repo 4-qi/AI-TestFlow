@@ -14,8 +14,18 @@ pytest_command:
   - pytest
   - -q
   - backend/tests
+generated_tests_path: ai-testflow-runs/latest/generated_api_tests.py
+generated_pytest_command:
+  - conda
+  - run
+  - -n
+  - AI-TestFlow
+  - python
+  - -m
+  - pytest
+  - -q
+  - ai-testflow-runs/latest/generated_api_tests.py
 api_execution_report_path: docs/api-test-execution.md
 test_report_path: docs/test-report.md
 bug_report_path: docs/bug-report.md
 output_dir: ai-testflow-runs/latest
-

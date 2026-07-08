@@ -20,9 +20,9 @@ This is the current Demo's discovered defect, not the only chain the one-stop wo
 | `TC-REG-003` | 用户名长度小于 6 位注册失败 |
 | `BUG-001` | 注册接口未校验用户名长度，短用户名可注册成功 |
 
-## Expected Test Behavior
+## Expected Generated Test Behavior
 
-The test `test_register_rejects_short_username_by_requirement` sends:
+The generated test `test_generated_register_rejects_short_username` sends:
 
 ```json
 {

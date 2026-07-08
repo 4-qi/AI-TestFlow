@@ -7,7 +7,7 @@ description: Run and explain the AI-TestFlow one-stop automated testing workflow
 
 ## Overview
 
-Use this skill as the dedicated AI component for the AI-TestFlow project. The skill wraps the repository's CLI tool and gives Codex the exact workflow for PRD analysis, requirement traceability, test execution, report generation, and Bug explanation.
+Use this skill as the dedicated AI component for the AI-TestFlow project. The skill wraps the repository's CLI tool and gives Codex the exact workflow for PRD analysis, requirement structuring, test case design, generated API test execution, report generation, and Bug explanation.
 
 ## Required Workflow
 
@@ -31,7 +31,7 @@ python skills/ai-testflow/scripts/run_ai_testflow.py
 The script calls:
 
 ```bash
-conda run -n AI-TestFlow python -m ai_testflow run
+conda run -n AI-TestFlow python -m ai_testflow run-all
 ```
 
 ## Expected Output Contract
@@ -40,10 +40,12 @@ After a successful skill run, these files must exist:
 
 ```text
 ai-testflow-runs/latest/inspection-summary.json
+ai-testflow-runs/latest/prd-analysis.json
 ai-testflow-runs/latest/requirements.json
 ai-testflow-runs/latest/pytest-output.txt
 ai-testflow-runs/latest/traceability.json
 ai-testflow-runs/latest/generated-test-cases.md
+ai-testflow-runs/latest/generated_api_tests.py
 ai-testflow-runs/latest/generated-test-report.md
 ai-testflow-runs/latest/generated-bug-report.md
 ```
@@ -56,7 +58,7 @@ When reporting to the user:
 
 1. State whether the skill/CLI execution completed.
 2. Report `status`, `requirements_count`, `test_cases_count`, `passed_tests`, `failed_tests`, and `defects` from `inspection-summary.json`.
-3. Mention the failing pytest test from `pytest-output.txt`.
+3. Mention the failing generated pytest test from `pytest-output.txt`.
 4. Explain the one-stop workflow stages from `inspection-summary.json`.
 5. Explain each item in `traceability.json` under `defects`.
 6. For the current Demo defect, use this exact example chain:

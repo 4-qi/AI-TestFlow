@@ -9,7 +9,7 @@
 | Python 版本 | 3.10.20 |
 | 测试框架 | pytest 8.2.2 |
 | 被测模块 | Flask 后端接口 |
-| 测试命令 | `conda run -n AI-TestFlow python -m pytest -q backend/tests` |
+| 测试命令 | `conda run -n AI-TestFlow python -m pytest -q ai-testflow-runs/latest/generated_api_tests.py` |
 
 ## 2. 执行结果摘要
 
@@ -22,13 +22,14 @@
 
 说明：
 
-自动化测试中的短用户名相关用例为 `test_register_rejects_short_username_by_requirement`。该用例按 PRD-FR-003 和 REG-002 断言短用户名应注册失败。当前系统实际返回注册成功，因此该用例失败，并形成 BUG-001 的真实测试证据。
+自动化测试中的短用户名相关用例为 `test_generated_register_rejects_short_username`。该用例由 CLI 根据测试用例清单生成，按 PRD-FR-003 和 REG-002 断言短用户名应注册失败。当前系统实际返回注册成功，因此该用例失败，并形成 BUG-001 的真实测试证据。
 
 ## 3. 命令输出
 
 ```text
-.....F......                                                             [100%]
-1 failed, 11 passed in 0.78s
+..F.........                                                             [100%]
+FAILED ai-testflow-runs/latest/generated_api_tests.py::test_generated_register_rejects_short_username
+1 failed, 11 passed in 0.86s
 ```
 
 ## 4. 接口执行明细

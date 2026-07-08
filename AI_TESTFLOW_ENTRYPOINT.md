@@ -37,7 +37,7 @@ PRD 分析器
 AI 或用户应先运行 CLI 入口：
 
 ```bash
-conda run -n AI-TestFlow python -m ai_testflow run
+conda run -n AI-TestFlow python -m ai_testflow run-all
 ```
 
 CLI 插件内部按以下链路执行：
@@ -47,7 +47,10 @@ CLI 插件内部按以下链路执行：
   -> 读取需求规格
   -> 读取测试用例
   -> 读取后端实现
-  -> 读取自动化测试
+  -> 分析 PRD 需求编号
+  -> 生成结构化需求
+  -> 生成测试用例清单
+  -> 生成接口自动化测试脚本
   -> 运行 pytest
   -> 分析失败用例
   -> 对齐需求编号
@@ -85,7 +88,7 @@ docs/bug-report.md
 | `docs/requirement-spec.md` | 获取结构化需求、接口规格、验收标准 |
 | `docs/test-cases.md` | 获取测试用例和需求追踪关系 |
 | `backend/app.py` | 获取真实后端实现 |
-| `backend/tests/test_api.py` | 获取真实自动化测试 |
+| `backend/tests/test_api.py` | 获取历史自动化测试和真实断言风格 |
 | `docs/api-test-execution.md` | 获取接口测试执行记录格式 |
 | `docs/test-report.md` | 获取测试报告格式 |
 | `docs/bug-report.md` | 获取 Bug 单格式 |
@@ -95,13 +98,13 @@ docs/bug-report.md
 在项目根目录执行：
 
 ```bash
-conda run -n AI-TestFlow python -m ai_testflow run
+conda run -n AI-TestFlow python -m ai_testflow run-all
 ```
 
 CLI 内部会运行：
 
 ```bash
-conda run -n AI-TestFlow python -m pytest -q backend/tests
+conda run -n AI-TestFlow python -m pytest -q ai-testflow-runs/latest/generated_api_tests.py
 ```
 
 当前系统保留预埋缺陷，因此 CLI 摘要应包含：
@@ -124,7 +127,7 @@ pytest 真实结果应包含：
 失败用例应为：
 
 ```text
-test_register_rejects_short_username_by_requirement
+test_generated_register_rejects_short_username
 ```
 
 失败原因应为：
@@ -202,8 +205,8 @@ AI 完成检验后，应输出以下内容：
 3. 读取 docs/test-cases.md，确认测试用例与需求编号的追踪关系。
 4. 读取 backend/app.py，确认当前后端真实实现。
 5. 读取 backend/tests/test_api.py，确认自动化测试真实断言。
-6. 运行 conda run -n AI-TestFlow python -m ai_testflow run。
-7. 读取 ai-testflow-runs/latest/inspection-summary.json、requirements.json、pytest-output.txt、traceability.json、generated-test-cases.md、generated-test-report.md 和 generated-bug-report.md。
+6. 运行 conda run -n AI-TestFlow python -m ai_testflow run-all。
+7. 读取 ai-testflow-runs/latest/inspection-summary.json、prd-analysis.json、requirements.json、pytest-output.txt、traceability.json、generated-test-cases.md、generated_api_tests.py、generated-test-report.md 和 generated-bug-report.md。
 8. 分析 inspection-summary.json 中的 workflow_stages、requirements_count、test_cases_count 和 defects。
 9. 分析 pytest 输出中的失败用例。
 10. 将失败用例回溯到 traceability.json 中的缺陷列表；当前 Demo 缺陷实例为 PRD-FR-003、REG-002、AC-003、TC-REG-003 和 BUG-001。
@@ -224,7 +227,7 @@ AI 完成检验后，应输出以下内容：
 人工只需要看三处：
 
 1. `backend/tests/test_api.py` 中是否存在按需求断言的短用户名测试。
-2. pytest 输出是否出现 `test_register_rejects_short_username_by_requirement` 失败。
+2. pytest 输出是否出现 `test_generated_register_rejects_short_username` 失败。
 3. `docs/bug-report.md` 是否记录 `BUG-001` 并关联 `PRD-FR-003`、`REG-002`、`AC-003`、`TC-REG-003`。
 
 如果这三处都一致，说明 AI 检验流程跑通。

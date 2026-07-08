@@ -4,10 +4,11 @@
 
 AI-TestFlow 是一个用于验证“AI 驱动自动化测试全流程”的最小原型项目。
 
-它由两部分组成：
+它由三部分组成：
 
 1. 一个可运行的 React + Flask 登录注册 Demo 系统。
 2. 一套围绕该 Demo 系统编写的测试全流程文档，包括 PRD、需求规格、测试用例、执行记录、测试报告、Bug 单和插件原型设计。
+3. 一个 `ai_testflow` CLI + `skills/ai-testflow` 专用 AI 组件原型，用于自动编排分析、生成、执行和报告流程。
 
 这个项目的重点不是做一个复杂业务系统，而是把“从需求到缺陷”的完整测试链路跑通。
 
@@ -40,6 +41,7 @@ PRD -> 需求拆解 -> 测试用例 -> 测试执行 -> 测试报告 -> Bug 单
 6. 后端 pytest 自动化测试已实现。
 7. PRD、需求规格、测试用例、执行记录、测试报告、Bug 单已输出。
 8. AI 自动化测试插件最小原型设计方案已输出。
+9. CLI 已实现 PRD 分析、需求结构化、测试用例清单生成、接口自动化测试脚本生成、pytest 执行、测试报告生成和 Bug 单生成。
 
 当前项目是“插件流程原型”，不是一个已经安装到浏览器、IDE 或测试平台里的插件成品。它的价值在于把插件要完成的工作拆清楚，并用本地 Demo 跑通证据链。
 
@@ -49,9 +51,13 @@ PRD -> 需求拆解 -> 测试用例 -> 测试执行 -> 测试报告 -> Bug 单
 
 ```text
 AI-TestFlow/
+  ai_testflow/
+  ai-testflow.yml
+  ai-testflow-runs/
   backend/
   frontend/
   docs/
+  skills/
   README.md
 ```
 
@@ -71,7 +77,21 @@ backend/tests/test_api.py
 
 `backend/tests/test_api.py` 提供接口自动化测试，用来验证注册、登录、当前用户查询、退出登录以及预埋缺陷。
 
-### 4.2 `frontend/`
+### 4.2 `ai_testflow/`
+
+`ai_testflow/` 是本项目的一站式自动化测试 CLI 原型。
+
+它负责：
+
+1. 读取 `ai-testflow.yml` 中声明的精确路径和命令。
+2. 解析 `docs/prd.md`。
+3. 生成运行态结构化需求。
+4. 生成运行态测试用例清单。
+5. 生成 pytest 接口自动化测试脚本。
+6. 执行生成的测试脚本。
+7. 汇总测试报告和 Bug 单。
+
+### 4.3 `frontend/`
 
 `frontend/` 是 React 前端工程。
 
@@ -88,7 +108,7 @@ frontend/src/styles.css
 
 前端使用 React Router 管理页面路由，使用 Axios 调用后端接口，使用 Ant Design 实现表单、按钮、提示信息和页面组件。
 
-### 4.3 `docs/`
+### 4.4 `docs/`
 
 `docs/` 是项目最核心的交付物目录。
 
@@ -108,6 +128,12 @@ frontend/src/styles.css
 | `docs/bug-report.md` | 标准 Bug 单 |
 | `docs/plugin-prototype-design.md` | AI 自动化测试插件最小原型设计 |
 | `docs/project-introduction.md` | 项目整体介绍 |
+
+### 4.5 `skills/ai-testflow/`
+
+`skills/ai-testflow/` 是专用 AI 组件原型。
+
+它的作用不是替代 CLI，而是告诉 AI 在本项目里应该如何读取配置、调用 CLI、检查运行产物、解释缺陷链路。
 
 ## 5. Demo 系统本身怎么运行
 
@@ -313,10 +339,10 @@ PRD-FR-003 用户名长度限制
 输出：
 
 ```text
-docs/requirement-spec.md
+ai-testflow-runs/latest/requirements.json
 ```
 
-插件把 PRD 内容整理成模块、规则、接口、页面和验收标准。
+插件把 PRD 解析结果与 `docs/requirement-spec.md` 对齐，整理成模块、规则、接口、页面和验收标准。
 
 例如：
 
@@ -331,10 +357,10 @@ PRD-FR-003 -> MOD-001 -> REG-002 -> AC-003
 输出：
 
 ```text
-docs/test-cases.md
+ai-testflow-runs/latest/generated-test-cases.md
 ```
 
-插件根据结构化需求生成测试用例。
+插件根据 `docs/test-cases.md` 生成运行态测试用例清单。
 
 例如 `REG-002` 会生成：
 
@@ -348,18 +374,34 @@ TC-REG-003 用户名长度小于 6 位注册失败
 2. 测试数据：`username=abc`, `password=Password123`, `confirm_password=Password123`
 3. 期望结果：注册失败，提示 `用户名长度不能少于6位`
 
-### 8.4 第四步：执行测试
+### 8.4 第四步：生成自动化测试脚本
+
+输出：
+
+```text
+ai-testflow-runs/latest/generated_api_tests.py
+```
+
+插件根据测试用例编号和接口测试模板生成 pytest 脚本。
+
+其中 `TC-REG-003` 会生成：
+
+```text
+test_generated_register_rejects_short_username
+```
+
+### 8.5 第五步：执行测试
 
 接口自动化测试由 pytest 执行：
 
 ```bash
-conda run -n AI-TestFlow python -m pytest -q backend/tests
+conda run -n AI-TestFlow python -m pytest -q ai-testflow-runs/latest/generated_api_tests.py
 ```
 
-当前自动化测试文件是：
+当前插件生成的自动化测试文件是：
 
 ```text
-backend/tests/test_api.py
+ai-testflow-runs/latest/generated_api_tests.py
 ```
 
 测试内容覆盖：
@@ -375,9 +417,9 @@ backend/tests/test_api.py
 9. 未登录访问 `/api/me` 失败。
 10. 登录后访问 `/api/me` 成功。
 11. 退出登录后登录态清除。
-12. 短用户名注册成功，用于证明预埋缺陷存在。
+12. 短用户名注册失败，用于验证 PRD-FR-003 的业务规则。
 
-### 8.5 第五步：对比期望结果和实际结果
+### 8.6 第六步：对比期望结果和实际结果
 
 对 `TC-REG-003` 来说：
 
@@ -395,12 +437,12 @@ backend/tests/test_api.py
 
 插件判断这里存在需求实现偏差。
 
-### 8.6 第六步：生成测试报告
+### 8.7 第七步：生成测试报告
 
 输出：
 
 ```text
-docs/test-report.md
+ai-testflow-runs/latest/generated-test-report.md
 ```
 
 测试报告负责回答：
@@ -418,12 +460,12 @@ docs/test-report.md
 2. 预埋缺陷可稳定复现。
 3. 当前系统不满足正式上线标准，必须修复 `BUG-001` 后才能满足 `PRD-FR-003`。
 
-### 8.7 第七步：生成 Bug 单
+### 8.8 第八步：生成 Bug 单
 
 输出：
 
 ```text
-docs/bug-report.md
+ai-testflow-runs/latest/generated-bug-report.md
 ```
 
 Bug 单不是只写一句“注册有问题”，而是完整描述：
@@ -645,4 +687,3 @@ withCredentials: true
 ```
 
 本项目通过 `PRD-FR-003 -> REG-002 -> AC-003 -> TC-REG-003 -> BUG-001` 这条链路，把 AI 自动化测试插件的核心价值展示出来。
-

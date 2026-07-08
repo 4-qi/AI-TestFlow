@@ -9,8 +9,8 @@
 3. 读取 `docs/test-cases.md`，确认测试用例与需求编号的追踪关系。
 4. 读取 `backend/app.py`，确认当前后端真实实现。
 5. 读取 `backend/tests/test_api.py`，确认自动化测试真实断言。
-6. 运行 `conda run -n AI-TestFlow python -m ai_testflow run`。
-7. 读取 `ai-testflow-runs/latest/inspection-summary.json`、`requirements.json`、`pytest-output.txt`、`traceability.json`、`generated-test-cases.md`、`generated-test-report.md` 和 `generated-bug-report.md`。
+6. 运行 `conda run -n AI-TestFlow python -m ai_testflow run-all`。
+7. 读取 `ai-testflow-runs/latest/inspection-summary.json`、`prd-analysis.json`、`requirements.json`、`pytest-output.txt`、`traceability.json`、`generated-test-cases.md`、`generated_api_tests.py`、`generated-test-report.md` 和 `generated-bug-report.md`。
 8. 分析 `inspection-summary.json` 中的 `workflow_stages`、`requirements_count`、`test_cases_count` 和 `defects`。
 9. 分析 pytest 输出中的失败用例。
 10. 将失败用例回溯到 `traceability.json` 中的缺陷列表；当前 Demo 缺陷实例为 `PRD-FR-003`、`REG-002`、`AC-003`、`TC-REG-003` 和 `BUG-001`。

@@ -5,9 +5,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from .analyzer import analyze_prd, build_requirements, extract_requirement_rows, extract_test_case_rows
 from .config import TestFlowConfig
 from .pytest_runner import PytestResult, run_pytest
 from .report_writer import build_bug_report, build_generated_test_cases, build_test_report
+from .test_generator import render_generated_api_tests
 
 
 KNOWN_DEFECTS = [
@@ -18,6 +20,7 @@ KNOWN_DEFECTS = [
         "test_case_id": "TC-REG-003",
         "bug_id": "BUG-001",
         "failed_test_name": "test_register_rejects_short_username_by_requirement",
+        "generated_failed_test_name": "test_generated_register_rejects_short_username",
         "expected": "用户名长度小于 6 位时注册失败，HTTP 400",
         "actual": "用户名长度小于 6 位时注册成功，HTTP 200",
         "title": "注册接口未校验用户名长度，短用户名可注册成功",
@@ -30,7 +33,7 @@ TRACEABILITY = {
     "acceptance_id": "AC-003",
     "test_case_id": "TC-REG-003",
     "bug_id": "BUG-001",
-    "failed_test_name": "test_register_rejects_short_username_by_requirement",
+    "failed_test_name": "test_generated_register_rejects_short_username",
     "expected": "用户名长度小于 6 位时注册失败，HTTP 400",
     "actual": "用户名长度小于 6 位时注册成功，HTTP 200",
 }
@@ -48,10 +51,15 @@ class InspectionResult:
 
 def run_inspection(config: TestFlowConfig, project_root: Path) -> InspectionResult:
     source_context = _read_source_context(config, project_root)
-    pytest_result = run_pytest(config.pytest_command, project_root)
+    prd_analysis = analyze_prd(source_context[str(config.prd_path)])
+    requirement_rows = extract_requirement_rows(source_context[str(config.requirement_spec_path)])
+    requirements = build_requirements(prd_analysis, requirement_rows)
+    test_cases = extract_test_case_rows(source_context[str(config.test_cases_path)])
+    generated_test_cases = build_generated_test_cases(test_cases)
+    generated_api_tests = render_generated_api_tests(test_cases)
+    _write_generated_api_tests(config, project_root, generated_api_tests)
+    pytest_result = run_pytest(config.generated_pytest_command, project_root)
     defects_found = pytest_result.failed_tests > 0
-    requirements = _extract_requirements(source_context[str(config.requirement_spec_path)])
-    test_cases = _extract_test_cases(source_context[str(config.test_cases_path)])
     defects = _map_defects(pytest_result.failed_test_names)
     workflow_stages = _build_workflow_stages(requirements, test_cases, pytest_result, defects)
 
@@ -82,14 +90,15 @@ def run_inspection(config: TestFlowConfig, project_root: Path) -> InspectionResu
 
     generated_test_report = build_test_report(summary, traceability, pytest_result)
     generated_bug_report = build_bug_report(summary, traceability, pytest_result)
-    generated_test_cases = build_generated_test_cases(test_cases)
     output_files = _write_outputs(
         config,
         project_root,
         summary,
         traceability,
         pytest_result,
+        prd_analysis,
         generated_test_cases,
+        generated_api_tests,
         generated_test_report,
         generated_bug_report,
     )
@@ -128,7 +137,9 @@ def _write_outputs(
     summary: dict[str, Any],
     traceability: dict[str, Any],
     pytest_result: PytestResult,
+    prd_analysis: dict[str, Any],
     generated_test_cases: str,
+    generated_api_tests: str,
     generated_test_report: str,
     generated_bug_report: str,
 ) -> dict[str, Path]:
@@ -137,71 +148,35 @@ def _write_outputs(
 
     files = {
         "inspection_summary": output_dir / "inspection-summary.json",
+        "prd_analysis": output_dir / "prd-analysis.json",
         "requirements": output_dir / "requirements.json",
         "pytest_output": output_dir / "pytest-output.txt",
         "traceability": output_dir / "traceability.json",
         "generated_test_cases": output_dir / "generated-test-cases.md",
+        "generated_api_tests": output_dir / "generated_api_tests.py",
         "generated_test_report": output_dir / "generated-test-report.md",
         "generated_bug_report": output_dir / "generated-bug-report.md",
     }
     files["inspection_summary"].write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    files["prd_analysis"].write_text(json.dumps(prd_analysis, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     files["requirements"].write_text(json.dumps(traceability["requirements"], ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     files["pytest_output"].write_text(pytest_result.combined_output, encoding="utf-8")
     files["traceability"].write_text(json.dumps(traceability, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     files["generated_test_cases"].write_text(generated_test_cases, encoding="utf-8")
+    files["generated_api_tests"].write_text(generated_api_tests, encoding="utf-8")
     files["generated_test_report"].write_text(generated_test_report, encoding="utf-8")
     files["generated_bug_report"].write_text(generated_bug_report, encoding="utf-8")
     return files
-
-
-def _extract_requirements(requirement_spec: str) -> list[dict[str, str]]:
-    requirements: list[dict[str, str]] = []
-    for line in requirement_spec.splitlines():
-        cells = _markdown_cells(line)
-        if len(cells) == 4 and cells[0].startswith("PRD-"):
-            requirements.append(
-                {
-                    "requirement_id": cells[0],
-                    "module_id": cells[1],
-                    "description": cells[2],
-                    "test_focus": cells[3],
-                }
-            )
-    return requirements
-
-
-def _extract_test_cases(test_cases_doc: str) -> list[dict[str, str]]:
-    test_cases: list[dict[str, str]] = []
-    for line in test_cases_doc.splitlines():
-        cells = _markdown_cells(line)
-        if len(cells) == 7 and cells[0].startswith("TC-"):
-            test_cases.append(
-                {
-                    "test_case_id": cells[0],
-                    "requirement_id": cells[1],
-                    "title": cells[2],
-                    "precondition": cells[3],
-                    "test_data": cells[4],
-                    "expected_result": cells[5],
-                    "priority": cells[6],
-                }
-            )
-    return test_cases
-
-
-def _markdown_cells(line: str) -> list[str]:
-    stripped = line.strip()
-    if not stripped.startswith("|") or not stripped.endswith("|"):
-        return []
-    return [cell.strip() for cell in stripped.strip("|").split("|")]
 
 
 def _map_defects(failed_test_names: list[str]) -> list[dict[str, str]]:
     defects: list[dict[str, str]] = []
     for failed_test_name in failed_test_names:
         for defect in KNOWN_DEFECTS:
-            if defect["failed_test_name"] == failed_test_name:
-                defects.append(defect)
+            if failed_test_name in {defect["failed_test_name"], defect["generated_failed_test_name"]}:
+                mapped = dict(defect)
+                mapped["failed_test_name"] = failed_test_name
+                defects.append(mapped)
     return defects
 
 
@@ -215,7 +190,14 @@ def _build_workflow_stages(
         {"stage": "PRD分析", "status": "completed", "output": "需求原文已读取"},
         {"stage": "需求拆解", "status": "completed", "output": len(requirements)},
         {"stage": "测试用例设计", "status": "completed", "output": len(test_cases)},
+        {"stage": "自动化测试脚本生成", "status": "completed", "output": "generated_api_tests.py"},
         {"stage": "用例执行", "status": "completed", "output": pytest_result.failed_tests + pytest_result.passed_tests},
         {"stage": "测试报告生成", "status": "completed", "output": "generated-test-report.md"},
         {"stage": "自动提Bug", "status": "completed" if defects else "skipped", "output": len(defects)},
     ]
+
+
+def _write_generated_api_tests(config: TestFlowConfig, project_root: Path, generated_api_tests: str) -> None:
+    target = project_root / config.generated_tests_path
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(generated_api_tests, encoding="utf-8")

@@ -22,17 +22,18 @@ PRD 文本
 CLI 插件入口：
 
 ```bash
-conda run -n AI-TestFlow python -m ai_testflow run
+conda run -n AI-TestFlow python -m ai_testflow run-all
 ```
 
 ## 2. 角色与输入输出
 
 | 阶段 | 输入 | 输出 |
 | --- | --- | --- |
-| PRD 解析 | `docs/prd.md` | 功能需求、非功能需求、接口范围、验收标准 |
-| 需求结构化 | PRD 解析结果 | 需求编号、模块、规则、测试重点 |
-| 用例生成 | 结构化需求 | `docs/test-cases.md` |
-| 自动化执行 | 测试用例、接口规格、被测系统地址 | `ai-testflow-runs/latest/pytest-output.txt` |
+| PRD 解析 | `docs/prd.md` | `ai-testflow-runs/latest/prd-analysis.json` |
+| 需求结构化 | PRD 解析结果、`docs/requirement-spec.md` | `ai-testflow-runs/latest/requirements.json` |
+| 用例生成 | 结构化需求、`docs/test-cases.md` | `ai-testflow-runs/latest/generated-test-cases.md` |
+| 自动化脚本生成 | 测试用例、接口规格 | `ai-testflow-runs/latest/generated_api_tests.py` |
+| 自动化执行 | 生成的接口测试脚本 | `ai-testflow-runs/latest/pytest-output.txt` |
 | 手工记录辅助 | 页面用例、页面地址 | `docs/manual-test-execution.md` |
 | 报告生成 | 执行记录、缺陷记录 | `docs/test-report.md` |
 | Bug 单生成 | 失败用例、实际结果、期望结果 | `docs/bug-report.md` |
@@ -64,7 +65,7 @@ conda run -n AI-TestFlow python -m ai_testflow run
 
 本项目最小实现：
 
-以 `docs/requirement-spec.md` 为结构化输出，固定追踪关系：
+以 `docs/requirement-spec.md` 和 PRD 解析结果生成运行态结构化需求，并把当前 Demo 中发现的缺陷实例写入 `traceability.json`：
 
 ```text
 PRD-FR-003 -> REG-002 -> AC-003 -> TC-REG-003 -> BUG-001
@@ -80,9 +81,25 @@ PRD-FR-003 -> REG-002 -> AC-003 -> TC-REG-003 -> BUG-001
 
 本项目最小实现：
 
-生成 `docs/test-cases.md`，覆盖注册、登录、当前用户查询和退出登录。
+读取 `docs/test-cases.md`，生成运行态测试用例清单 `ai-testflow-runs/latest/generated-test-cases.md`，覆盖注册、登录、当前用户查询和退出登录。
 
-### 3.4 自动化执行模块
+### 3.4 自动化测试脚本生成模块
+
+职责：
+
+1. 根据测试用例编号选择接口测试模板。
+2. 生成 pytest 可执行脚本。
+3. 把生成结果保存为插件运行产物。
+
+本项目最小实现：
+
+读取 `docs/test-cases.md` 后生成：
+
+```text
+ai-testflow-runs/latest/generated_api_tests.py
+```
+
+### 3.5 自动化执行模块
 
 职责：
 
@@ -93,15 +110,15 @@ PRD-FR-003 -> REG-002 -> AC-003 -> TC-REG-003 -> BUG-001
 
 本项目最小实现：
 
-使用 pytest 执行 `backend/tests/test_api.py`：
+使用 pytest 执行插件生成的接口测试脚本：
 
 ```bash
-conda run -n AI-TestFlow python -m ai_testflow run
+conda run -n AI-TestFlow python -m ai_testflow run-all
 ```
 
 CLI 插件内部调用 pytest，并把真实输出保存到 `ai-testflow-runs/latest/pytest-output.txt`。
 
-### 3.5 报告生成模块
+### 3.6 报告生成模块
 
 职责：
 
@@ -114,7 +131,7 @@ CLI 插件内部调用 pytest，并把真实输出保存到 `ai-testflow-runs/la
 
 根据 pytest 输出和追踪关系生成 `ai-testflow-runs/latest/generated-test-report.md`。
 
-### 3.6 Bug 单生成模块
+### 3.7 Bug 单生成模块
 
 职责：
 
@@ -127,7 +144,7 @@ CLI 插件内部调用 pytest，并把真实输出保存到 `ai-testflow-runs/la
 
 根据 TC-REG-003 的执行结果生成 `ai-testflow-runs/latest/generated-bug-report.md`。
 
-### 3.7 Bug 推送模块
+### 3.8 Bug 推送模块
 
 职责：
 
@@ -145,9 +162,12 @@ CLI 插件内部调用 pytest，并把真实输出保存到 `ai-testflow-runs/la
 docs/prd.md
   -> docs/requirement-spec.md
   -> docs/test-cases.md
-  -> backend/tests/test_api.py
   -> ai-testflow.yml
-  -> python -m ai_testflow run
+  -> python -m ai_testflow run-all
+  -> ai-testflow-runs/latest/prd-analysis.json
+  -> ai-testflow-runs/latest/requirements.json
+  -> ai-testflow-runs/latest/generated-test-cases.md
+  -> ai-testflow-runs/latest/generated_api_tests.py
   -> ai-testflow-runs/latest/inspection-summary.json
   -> ai-testflow-runs/latest/generated-test-report.md
   -> ai-testflow-runs/latest/generated-bug-report.md
@@ -158,13 +178,14 @@ docs/prd.md
 | 任务编号 | 任务 | 当前实现 |
 | --- | --- | --- |
 | PLUGIN-TASK-001 | 读取 PRD 文本 | 使用 Markdown 文档作为输入 |
-| PLUGIN-TASK-002 | 提取需求编号和规则 | 在需求规格中结构化呈现 |
-| PLUGIN-TASK-003 | 生成测试用例 | 已输出测试用例文档 |
-| PLUGIN-TASK-004 | 执行接口测试 | 已实现 CLI 调用 pytest |
-| PLUGIN-TASK-005 | 汇总执行结果 | 已输出 `inspection-summary.json` |
-| PLUGIN-TASK-006 | 生成测试报告 | 已输出 `generated-test-report.md` |
-| PLUGIN-TASK-007 | 生成 Bug 单 | 已输出 `generated-bug-report.md` |
-| PLUGIN-TASK-008 | 推送 Bug | 当前以 Markdown 模拟外部系统记录 |
+| PLUGIN-TASK-002 | 提取需求编号和规则 | 已输出 `prd-analysis.json`、`requirements.json` |
+| PLUGIN-TASK-003 | 生成测试用例 | 已输出 `generated-test-cases.md` |
+| PLUGIN-TASK-004 | 生成接口自动化测试脚本 | 已输出 `generated_api_tests.py` |
+| PLUGIN-TASK-005 | 执行接口测试 | 已实现 CLI 调用 pytest |
+| PLUGIN-TASK-006 | 汇总执行结果 | 已输出 `inspection-summary.json` |
+| PLUGIN-TASK-007 | 生成测试报告 | 已输出 `generated-test-report.md` |
+| PLUGIN-TASK-008 | 生成 Bug 单 | 已输出 `generated-bug-report.md` |
+| PLUGIN-TASK-009 | 推送 Bug | 当前以 Markdown 模拟外部系统记录 |
 
 ## 6. 后续扩展方向
 

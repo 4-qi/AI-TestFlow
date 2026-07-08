@@ -15,6 +15,7 @@ Read these paths through `ai-testflow.yml`:
 | `test_cases_path` | `docs/test-cases.md` |
 | `backend_source_path` | `backend/app.py` |
 | `pytest_path` | `backend/tests` |
+| `generated_tests_path` | `ai-testflow-runs/latest/generated_api_tests.py` |
 | `output_dir` | `ai-testflow-runs/latest` |
 
 ## Execution Steps
@@ -24,17 +25,19 @@ Read these paths through `ai-testflow.yml`:
 3. Read `ai-testflow-runs/latest/inspection-summary.json`.
 4. Read `ai-testflow-runs/latest/traceability.json`.
 5. Read `ai-testflow-runs/latest/pytest-output.txt`.
-6. Read `ai-testflow-runs/latest/requirements.json`.
-7. Read `ai-testflow-runs/latest/generated-test-cases.md`.
-8. Read `ai-testflow-runs/latest/generated-test-report.md` when the user asks for the generated report.
-9. Read `ai-testflow-runs/latest/generated-bug-report.md` when the user asks for the generated Bug.
+6. Read `ai-testflow-runs/latest/prd-analysis.json`.
+7. Read `ai-testflow-runs/latest/requirements.json`.
+8. Read `ai-testflow-runs/latest/generated-test-cases.md`.
+9. Read `ai-testflow-runs/latest/generated_api_tests.py`.
+10. Read `ai-testflow-runs/latest/generated-test-report.md` when the user asks for the generated report.
+11. Read `ai-testflow-runs/latest/generated-bug-report.md` when the user asks for the generated Bug.
 
 ## One-Stop Workflow Stages
 
 The skill represents these stages:
 
 ```text
-PRD分析 -> 需求拆解 -> 测试用例设计 -> 用例执行 -> 测试报告生成 -> 自动提Bug
+PRD分析 -> 需求拆解 -> 测试用例设计 -> 自动化测试脚本生成 -> 用例执行 -> 测试报告生成 -> 自动提Bug
 ```
 
 `inspection-summary.json` contains `workflow_stages`. Use those stages to explain what the AI component completed.
@@ -47,8 +50,10 @@ The skill execution is successful when:
 2. `inspection-summary.json` exists.
 3. `traceability.json` exists.
 4. `pytest-output.txt` exists.
-5. `inspection-summary.json` contains `workflow_stages`.
-6. `traceability.json` contains `requirements`, `test_cases`, and `defects`.
+5. `prd-analysis.json` exists.
+6. `generated_api_tests.py` exists.
+7. `inspection-summary.json` contains `workflow_stages`.
+8. `traceability.json` contains `requirements`, `test_cases`, and `defects`.
 
 The current Demo is not defect-free. The known Demo defect is expected and should be reported as one item in `defects`.
 

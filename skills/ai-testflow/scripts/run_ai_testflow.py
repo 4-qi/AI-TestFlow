@@ -19,7 +19,7 @@ def main() -> int:
             print(f"- {path}")
         return 2
 
-    command = ["conda", "run", "-n", "AI-TestFlow", "python", "-m", "ai_testflow", "run"]
+    command = ["conda", "run", "-n", "AI-TestFlow", "python", "-m", "ai_testflow", "run-all"]
     completed = subprocess.run(command, cwd=repo_root, text=True, check=False)
     if completed.returncode != 0:
         print(f"AI-TestFlow CLI failed with exit code {completed.returncode}")
@@ -35,4 +35,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
