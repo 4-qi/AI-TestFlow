@@ -17,16 +17,18 @@
 
 ## 2. 当前原型的 AI 使用方式
 
-当前项目的 AI 检验流程是“CLI 插件原型”。
+当前项目的 AI 检验流程是“Agent + CLI 插件原型”。
 
-也就是说，现在还不是一个已经打包发布的浏览器插件、IDE 插件或测试平台插件，而是通过一条 CLI 命令完成自动化测试插件应该完成的事情。
+也就是说，现在还不是一个已经打包发布的浏览器插件、IDE 插件或测试平台插件，而是在仓库内用 Agent 配置定义 AI 执行器，再通过 CLI 命令完成自动化测试插件应该完成的事情。
 
 AI 在这个流程中扮演的角色是：
 
 ```text
-PRD 分析器
+Agent 编排器
+  + PRD 分析器
   + 需求拆解器
   + 测试用例设计器
+  + 自动化测试脚本生成器
   + 自动化测试执行器
   + 测试报告生成器
   + Bug 单生成器
@@ -34,7 +36,14 @@ PRD 分析器
 
 ## 3. AI 检验流程总链路
 
-AI 或用户应先运行 CLI 入口：
+AI 应先读取 Agent 原型：
+
+```text
+agents/ai-testflow-agent.md
+agents/ai-testflow-agent.yaml
+```
+
+然后运行 CLI 执行入口：
 
 ```bash
 conda run -n AI-TestFlow python -m ai_testflow run-all
@@ -70,6 +79,9 @@ ai-testflow-runs/latest/
 AI 执行检验前，必须按顺序读取以下文件：
 
 ```text
+agents/ai-testflow-agent.md
+agents/ai-testflow-agent.yaml
+ai-testflow.yml
 docs/prd.md
 docs/requirement-spec.md
 docs/test-cases.md
@@ -84,6 +96,9 @@ docs/bug-report.md
 
 | 文件 | 读取目的 |
 | --- | --- |
+| `agents/ai-testflow-agent.md` | 获取 Agent 角色、流程和行为约束 |
+| `agents/ai-testflow-agent.yaml` | 获取 Agent 结构化输入、输出和执行契约 |
+| `ai-testflow.yml` | 获取 CLI 精确路径和命令 |
 | `docs/prd.md` | 获取原始需求和业务规则 |
 | `docs/requirement-spec.md` | 获取结构化需求、接口规格、验收标准 |
 | `docs/test-cases.md` | 获取测试用例和需求追踪关系 |

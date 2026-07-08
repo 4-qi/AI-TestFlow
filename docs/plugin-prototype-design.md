@@ -25,10 +25,20 @@ CLI 插件入口：
 conda run -n AI-TestFlow python -m ai_testflow run-all
 ```
 
+Agent 原型入口：
+
+```text
+agents/ai-testflow-agent.md
+agents/ai-testflow-agent.yaml
+```
+
+当前设计中，Agent 是用户面对的一站式 AI 测试入口，CLI 是稳定执行器，pytest 是真实测试执行层。
+
 ## 2. 角色与输入输出
 
 | 阶段 | 输入 | 输出 |
 | --- | --- | --- |
+| Agent 编排 | 用户检测请求、Agent 配置 | 测试结论、缺陷解释、后续建议 |
 | PRD 解析 | `docs/prd.md` | `ai-testflow-runs/latest/prd-analysis.json` |
 | 需求结构化 | PRD 解析结果、`docs/requirement-spec.md` | `ai-testflow-runs/latest/requirements.json` |
 | 用例生成 | 结构化需求、`docs/test-cases.md` | `ai-testflow-runs/latest/generated-test-cases.md` |
@@ -40,6 +50,20 @@ conda run -n AI-TestFlow python -m ai_testflow run-all
 | Bug 推送 | Bug 单结构化字段 | 外部 Bug 系统记录 |
 
 ## 3. 模块设计
+
+### 3.0 Agent 编排模块
+
+职责：
+
+1. 接收用户的一站式测试请求。
+2. 读取 Agent 配置和项目配置。
+3. 调用 CLI 执行完整检测。
+4. 读取运行产物并解释测试结论。
+5. 将失败用例回溯到 PRD、业务规则、验收标准、测试用例和 Bug 单。
+
+本项目最小实现：
+
+使用 `agents/ai-testflow-agent.md` 和 `agents/ai-testflow-agent.yaml` 描述 Agent 的角色、输入输出、执行命令和行为约束。
 
 ### 3.1 PRD 文本解析模块
 
@@ -162,6 +186,7 @@ CLI 插件内部调用 pytest，并把真实输出保存到 `ai-testflow-runs/la
 docs/prd.md
   -> docs/requirement-spec.md
   -> docs/test-cases.md
+  -> agents/ai-testflow-agent.yaml
   -> ai-testflow.yml
   -> python -m ai_testflow run-all
   -> ai-testflow-runs/latest/prd-analysis.json
@@ -177,6 +202,7 @@ docs/prd.md
 
 | 任务编号 | 任务 | 当前实现 |
 | --- | --- | --- |
+| PLUGIN-TASK-000 | Agent 编排入口 | 已输出 `agents/ai-testflow-agent.md`、`agents/ai-testflow-agent.yaml` |
 | PLUGIN-TASK-001 | 读取 PRD 文本 | 使用 Markdown 文档作为输入 |
 | PLUGIN-TASK-002 | 提取需求编号和规则 | 已输出 `prd-analysis.json`、`requirements.json` |
 | PLUGIN-TASK-003 | 生成测试用例 | 已输出 `generated-test-cases.md` |
@@ -196,6 +222,7 @@ docs/prd.md
 5. 增加测试报告模板渲染。
 6. 增加外部 Bug 系统 API 推送。
 7. 增加需求变更后的用例差异分析。
+8. 将本地 Agent 原型发布为 Workspace Agent 或 IDE Agent。
 
 ## 7. 原型验收标准
 

@@ -1,0 +1,57 @@
+name: AI-TestFlow 自动化测试 Agent
+version: 0.1.0
+description: AI 驱动的一站式自动化测试 Agent 原型，负责编排 PRD 分析、需求拆解、测试用例设计、测试脚本生成、用例执行、报告生成和 Bug 单生成。
+entrypoint:
+  type: local_cli
+  command:
+    - conda
+    - run
+    - -n
+    - AI-TestFlow
+    - python
+    - -m
+    - ai_testflow
+    - run-all
+skill_component: skills/ai-testflow/SKILL.md
+config_path: ai-testflow.yml
+inputs:
+  prd: docs/prd.md
+  requirement_spec: docs/requirement-spec.md
+  test_cases: docs/test-cases.md
+  backend_source: backend/app.py
+  historical_pytest: backend/tests/test_api.py
+outputs:
+  output_dir: ai-testflow-runs/latest
+  inspection_summary: ai-testflow-runs/latest/inspection-summary.json
+  prd_analysis: ai-testflow-runs/latest/prd-analysis.json
+  requirements: ai-testflow-runs/latest/requirements.json
+  generated_test_cases: ai-testflow-runs/latest/generated-test-cases.md
+  generated_api_tests: ai-testflow-runs/latest/generated_api_tests.py
+  pytest_output: ai-testflow-runs/latest/pytest-output.txt
+  traceability: ai-testflow-runs/latest/traceability.json
+  generated_test_report: ai-testflow-runs/latest/generated-test-report.md
+  generated_bug_report: ai-testflow-runs/latest/generated-bug-report.md
+workflow_stages:
+  - PRD分析
+  - 需求拆解
+  - 测试用例设计
+  - 自动化测试脚本生成
+  - 用例执行
+  - 测试报告生成
+  - 自动提Bug
+reporting_contract:
+  must_read_outputs_before_conclusion: true
+  defect_source: traceability.json defects
+  current_demo_defect:
+    requirement_id: PRD-FR-003
+    rule_id: REG-002
+    acceptance_id: AC-003
+    test_case_id: TC-REG-003
+    bug_id: BUG-001
+    failed_test_name: test_generated_register_rejects_short_username
+guardrails:
+  - 不跳过文件读取直接下结论
+  - 不把预埋业务 Bug 解释为测试脚本错误
+  - 不在用户未要求修复时修改 backend/app.py 中的预埋缺陷
+  - 不只看 pytest 失败数量，必须回溯需求链路
+  - 不凭历史记忆输出测试结论，必须读取最新运行产物

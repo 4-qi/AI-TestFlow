@@ -4,11 +4,12 @@
 
 本仓库用于验证从 PRD 分析、需求拆解、测试用例设计、用例执行、测试报告生成到 Bug 单提交的最小闭环。
 
-当前项目包含三层：
+当前项目包含四层：
 
 1. React + Flask 登录注册 Demo 系统。
 2. `ai_testflow` CLI 检测工具。
 3. `skills/ai-testflow` 专用 AI Skill 组件原型。
+4. `agents/ai-testflow-agent.*` 本地 Agent 原型。
 
 ## 1. 项目结构
 
@@ -16,6 +17,9 @@
 AI-TestFlow/
   AI_TESTFLOW_ENTRYPOINT.md
   ai-testflow.yml
+  agents/
+    ai-testflow-agent.md
+    ai-testflow-agent.yaml
   ai_testflow/
   skills/
     ai-testflow/
@@ -40,6 +44,7 @@ AI-TestFlow/
     test-report.md
     bug-report.md
     plugin-prototype-design.md
+    agent-prototype-design.md
   prompts/
     ai-testflow-inspection.md
   tests/
@@ -125,9 +130,30 @@ generated-bug-report.md
 
 说明：即使检测到 BUG-001，CLI 插件命令也会返回成功。这里的含义是“插件执行成功，并发现缺陷”。
 
-## 4. Skill 组件运行方式
+## 4. Agent 原型
 
-本仓库提供一个 repo 内专用 Skill 原型：
+本仓库提供一个本地 Agent 原型：
+
+```text
+agents/ai-testflow-agent.md
+agents/ai-testflow-agent.yaml
+```
+
+Agent 的职责是调度和解释：
+
+```text
+读取配置和上下文
+  -> 调用 ai_testflow CLI
+  -> 读取运行产物
+  -> 解释 PRD 到 Bug 的追踪链路
+  -> 输出测试结论和后续建议
+```
+
+Agent 不替代 CLI。CLI 负责稳定执行，Agent 负责理解、编排和解释。
+
+## 5. Skill 组件运行方式
+
+本仓库提供一个 repo 内专用 Skill 原型，作为 Agent 的本地执行组件：
 
 ```text
 skills/ai-testflow/SKILL.md
@@ -141,7 +167,7 @@ python skills/ai-testflow/scripts/run_ai_testflow.py
 
 Skill 会调用现有 CLI，并要求 AI 读取 `ai-testflow-runs/latest/` 下的结构化结果来解释缺陷。
 
-## 5. 安装依赖
+## 6. 安装依赖
 
 后端依赖：
 
@@ -156,7 +182,7 @@ cd frontend
 npm install
 ```
 
-## 6. 启动 Demo 后端
+## 7. 启动 Demo 后端
 
 在项目根目录执行：
 
@@ -174,7 +200,7 @@ http://127.0.0.1:5000
 
 后端启动后会一直占用当前终端，这是正常现象。看到 `Backend URL: http://127.0.0.1:5000` 后，保持该终端运行，再打开一个新终端启动前端。停止后端时，在后端终端按 `Ctrl + C`。
 
-## 7. 启动 Demo 前端
+## 8. 启动 Demo 前端
 
 在 `frontend` 目录执行：
 
@@ -188,7 +214,7 @@ npm run dev
 http://127.0.0.1:5173
 ```
 
-## 8. 运行底层 pytest
+## 9. 运行底层 pytest
 
 在项目根目录执行：
 
@@ -216,7 +242,7 @@ conda run -n AI-TestFlow python -m pytest -q tests
 4 passed
 ```
 
-## 9. 预埋缺陷
+## 10. 预埋缺陷
 
 需求要求：
 
@@ -236,11 +262,13 @@ conda run -n AI-TestFlow python -m pytest -q tests
 PRD-FR-003 -> REG-002 -> AC-003 -> TC-REG-003 -> BUG-001
 ```
 
-## 10. 文档入口
+## 11. 文档入口
 
 | 文档 | 路径 |
 | --- | --- |
 | AI 检验流程入口 | `AI_TESTFLOW_ENTRYPOINT.md` |
+| Agent 原型说明 | `agents/ai-testflow-agent.md` |
+| Agent 结构化配置 | `agents/ai-testflow-agent.yaml` |
 | AI Skill 组件 | `skills/ai-testflow/SKILL.md` |
 | 项目介绍 | `docs/project-introduction.md` |
 | 任务分析与流程 | `docs/task-analysis-and-workflow.md` |
@@ -252,8 +280,9 @@ PRD-FR-003 -> REG-002 -> AC-003 -> TC-REG-003 -> BUG-001
 | 测试报告 | `docs/test-report.md` |
 | Bug 单 | `docs/bug-report.md` |
 | 插件原型设计 | `docs/plugin-prototype-design.md` |
+| Agent 原型设计 | `docs/agent-prototype-design.md` |
 
-## 11. AI 检验入口
+## 12. AI 检验入口
 
 如果要让 AI 按自动化测试插件流程检验本项目，从根目录入口开始：
 

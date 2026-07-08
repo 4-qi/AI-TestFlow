@@ -4,11 +4,12 @@
 
 AI-TestFlow 是一个用于验证“AI 驱动自动化测试全流程”的最小原型项目。
 
-它由三部分组成：
+它由四部分组成：
 
 1. 一个可运行的 React + Flask 登录注册 Demo 系统。
 2. 一套围绕该 Demo 系统编写的测试全流程文档，包括 PRD、需求规格、测试用例、执行记录、测试报告、Bug 单和插件原型设计。
 3. 一个 `ai_testflow` CLI + `skills/ai-testflow` 专用 AI 组件原型，用于自动编排分析、生成、执行和报告流程。
+4. 一个 `agents/ai-testflow-agent.*` 本地 Agent 原型，用于定义 AI 测试执行器的角色、输入、输出和行为约束。
 
 这个项目的重点不是做一个复杂业务系统，而是把“从需求到缺陷”的完整测试链路跑通。
 
@@ -42,6 +43,7 @@ PRD -> 需求拆解 -> 测试用例 -> 测试执行 -> 测试报告 -> Bug 单
 7. PRD、需求规格、测试用例、执行记录、测试报告、Bug 单已输出。
 8. AI 自动化测试插件最小原型设计方案已输出。
 9. CLI 已实现 PRD 分析、需求结构化、测试用例清单生成、接口自动化测试脚本生成、pytest 执行、测试报告生成和 Bug 单生成。
+10. Agent 原型已定义，用于把 CLI 和 Skill 封装成面向用户的一站式 AI 测试执行入口。
 
 当前项目是“插件流程原型”，不是一个已经安装到浏览器、IDE 或测试平台里的插件成品。它的价值在于把插件要完成的工作拆清楚，并用本地 Demo 跑通证据链。
 
@@ -51,6 +53,7 @@ PRD -> 需求拆解 -> 测试用例 -> 测试执行 -> 测试报告 -> Bug 单
 
 ```text
 AI-TestFlow/
+  agents/
   ai_testflow/
   ai-testflow.yml
   ai-testflow-runs/
@@ -127,9 +130,23 @@ frontend/src/styles.css
 | `docs/test-report.md` | 测试报告 |
 | `docs/bug-report.md` | 标准 Bug 单 |
 | `docs/plugin-prototype-design.md` | AI 自动化测试插件最小原型设计 |
+| `docs/agent-prototype-design.md` | AI 自动化测试 Agent 原型设计 |
 | `docs/project-introduction.md` | 项目整体介绍 |
 
-### 4.5 `skills/ai-testflow/`
+### 4.5 `agents/`
+
+`agents/` 是本项目的 Agent 原型目录。
+
+核心文件：
+
+```text
+agents/ai-testflow-agent.md
+agents/ai-testflow-agent.yaml
+```
+
+它定义 Agent 的角色、输入输出、调用命令、运行产物和行为约束。
+
+### 4.6 `skills/ai-testflow/`
 
 `skills/ai-testflow/` 是专用 AI 组件原型。
 
@@ -487,11 +504,56 @@ Bug 单不是只写一句“注册有问题”，而是完整描述：
 
 这就是“自动提 Bug”的最小形态。
 
-## 9. 从用户操作角度理解系统
+## 9. Agent 在这个项目里怎么运作
+
+Agent 是用户面对的一站式 AI 测试执行器。它不直接把所有逻辑写在对话里，而是调用已经稳定实现的 CLI，再读取运行产物输出结论。
+
+当前 Agent 原型文件：
+
+```text
+agents/ai-testflow-agent.md
+agents/ai-testflow-agent.yaml
+```
+
+Agent、Skill、CLI 的关系是：
+
+```text
+Agent：理解用户请求、编排流程、解释结果
+Skill：告诉 AI 如何在本仓库执行流程
+CLI：真正执行 PRD 分析、测试生成、pytest、报告和 Bug 单生成
+```
+
+Agent 的一次完整执行过程是：
+
+```text
+读取 agents/ai-testflow-agent.yaml
+  -> 读取 ai-testflow.yml
+  -> 读取 PRD、需求规格、测试用例、后端代码
+  -> 调用 conda run -n AI-TestFlow python -m ai_testflow run-all
+  -> 读取 ai-testflow-runs/latest/ 运行产物
+  -> 输出测试结论和 Bug 解释
+```
+
+这种设计的好处是：
+
+1. Agent 负责 AI 理解和解释。
+2. CLI 负责确定性执行，结果可复现。
+3. pytest 负责真实测试，不靠口头判断。
+4. JSON 和 Markdown 产物负责证据留存。
+
+当前 Agent 识别到的缺陷实例是：
+
+```text
+PRD-FR-003 -> REG-002 -> AC-003 -> TC-REG-003 -> BUG-001
+```
+
+这条链来自 `traceability.json` 中的缺陷列表，不是 Agent 只支持这一条链。
+
+## 10. 从用户操作角度理解系统
 
 你可以按下面流程体验系统：
 
-### 9.1 正常注册登录流程
+### 10.1 正常注册登录流程
 
 1. 打开 `http://127.0.0.1:5173/register`。
 2. 输入用户名 `testuser`。
@@ -506,7 +568,7 @@ Bug 单不是只写一句“注册有问题”，而是完整描述：
 11. 点击退出登录。
 12. 页面返回 `/login`。
 
-### 9.2 缺陷复现流程
+### 10.2 缺陷复现流程
 
 1. 打开 `http://127.0.0.1:5173/register`。
 2. 输入用户名 `abc`。
@@ -518,9 +580,9 @@ Bug 单不是只写一句“注册有问题”，而是完整描述：
 
 当前实际结果是注册成功，所以该流程对应 `BUG-001`。
 
-## 10. 从开发角度理解系统
+## 11. 从开发角度理解系统
 
-### 10.1 后端注册逻辑
+### 11.1 后端注册逻辑
 
 注册接口在 `backend/app.py` 中，路径是：
 
@@ -551,7 +613,7 @@ len(username) >= 6
 
 这就是预埋缺陷。
 
-### 10.2 后端登录逻辑
+### 11.2 后端登录逻辑
 
 登录接口在 `backend/app.py` 中，路径是：
 
@@ -574,7 +636,7 @@ session["username"]
 
 之后 `/api/me` 通过 session 判断当前用户是否登录。
 
-### 10.3 前端接口调用
+### 11.3 前端接口调用
 
 前端接口配置在：
 
@@ -591,7 +653,7 @@ withCredentials: true
 
 `withCredentials: true` 的作用是让浏览器请求携带 session cookie，这样登录态才能在 `/api/login`、`/api/me`、`/api/logout` 之间保持。
 
-## 11. 从测试角度理解系统
+## 12. 从测试角度理解系统
 
 测试不是随便点页面，而是围绕需求编号来设计。
 
@@ -608,11 +670,11 @@ withCredentials: true
 
 这样测试结果就能追溯回需求，而不是只记录“某个接口失败”。
 
-## 12. 这个项目怎么用于简历表达
+## 13. 这个项目怎么用于简历表达
 
 可以从三个层次介绍。
 
-### 12.1 开发能力
+### 13.1 开发能力
 
 可以说明：
 
@@ -621,7 +683,7 @@ withCredentials: true
 3. 使用 session 维护登录态。
 4. 使用密码哈希存储用户密码。
 
-### 12.2 测试能力
+### 13.2 测试能力
 
 可以说明：
 
@@ -631,7 +693,7 @@ withCredentials: true
 4. 输出手工测试记录、接口测试记录、测试报告和 Bug 单。
 5. 通过预埋缺陷验证测试闭环。
 
-### 12.3 AI 插件设计能力
+### 13.3 AI 插件设计能力
 
 可以说明：
 
@@ -640,7 +702,7 @@ withCredentials: true
 3. 设计需求到 Bug 的追踪链路。
 4. 用本地 Demo 验证插件流程，不依赖公司内部系统。
 
-## 13. 面试时怎么讲这个项目
+## 14. 面试时怎么讲这个项目
 
 可以按下面顺序讲：
 
@@ -659,7 +721,7 @@ withCredentials: true
 这个项目不是只做了一个登录注册页面，而是用一个可控 Demo 跑通了 AI 自动化测试插件的最小闭环。
 ```
 
-## 14. 后续可以继续做什么
+## 15. 后续可以继续做什么
 
 当前项目已经完成最小闭环。后续可以继续增强：
 
@@ -671,7 +733,7 @@ withCredentials: true
 6. 增加外部 Bug 系统推送适配层。
 7. 把当前文档流程封装为一个命令行工具或 Web 插件原型。
 
-## 15. 最重要的理解点
+## 16. 最重要的理解点
 
 理解这个项目时，不要只看登录注册功能本身。登录注册只是载体。
 
