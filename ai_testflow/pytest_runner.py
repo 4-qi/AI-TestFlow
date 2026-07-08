@@ -65,5 +65,8 @@ def _extract_failed_test_names(text: str) -> list[str]:
     for match in re.findall(r"FAILED\s+[\w./-]+::([\w_]+)", text):
         if match not in names:
             names.append(match)
+    for match in re.findall(r"^\s+(?:\d+\)\s+)?[\w./-]+:\d+:\d+\s+›\s+(.+)$", text, flags=re.MULTILINE):
+        name = match.strip()
+        if name not in names:
+            names.append(name)
     return names
-

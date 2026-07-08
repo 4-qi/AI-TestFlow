@@ -162,6 +162,19 @@ FAILED backend/tests/test_api.py::test_register_rejects_short_username_by_requir
     assert result.failed_test_names == ["test_register_rejects_short_username_by_requirement"]
 
 
+def test_parse_playwright_result_extracts_failed_test_titles():
+    output = """
+  1) generated-tests/generated_playwright_tests.spec.js:377:3 › 验证注册页面包含所有必要元素
+  2) generated-tests/generated_playwright_tests.spec.js:377:3 › 用户名为空提交时显示错误提示
+  2 failed
+"""
+
+    result = parse_pytest_result(["playwright"], 1, output, "", output)
+
+    assert result.failed_tests == 2
+    assert result.failed_test_names == ["验证注册页面包含所有必要元素", "用户名为空提交时显示错误提示"]
+
+
 def test_analyze_prd_extracts_requirements_and_interfaces():
     prd_text = """
 ### PRD-FR-003 用户名长度限制
@@ -334,9 +347,12 @@ def test_generated_playwright_tests_render_generic_ui_actions():
     assert "const cases =" in generated_script
     assert "fill_label" in generated_script
     assert "expect_text" in generated_script
-    assert "getByLabel(action.label, { exact: true })" in generated_script
-    assert "getByRole(action.role, { name: action.name, exact: true })" in generated_script
-    assert "getByText(action.text, { exact: true }).first()" in generated_script
+    assert "async function fillByLabel" in generated_script
+    assert "async function clickByRole" in generated_script
+    assert "async function expectText" in generated_script
+    assert "page.getByLabel(label).first().fill(value)" in generated_script
+    assert "page.getByRole(role, { name }).first().click()" in generated_script
+    assert "page.getByText(text).first()" in generated_script
 
 
 def test_script_agent_uses_structured_plan_to_generate_scripts(tmp_path):

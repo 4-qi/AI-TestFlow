@@ -162,17 +162,45 @@ PLAYWRIGHT_HEADER = """import { test, expect } from '@playwright/test';
 """
 
 
-PLAYWRIGHT_RUNNER = """for (const item of cases) {
+PLAYWRIGHT_RUNNER = """async function fillByLabel(page, label, value) {
+  const exactLocator = page.getByLabel(label, { exact: true });
+  if (await exactLocator.count()) {
+    await exactLocator.first().fill(value);
+    return;
+  }
+  await page.getByLabel(label).first().fill(value);
+}
+
+async function clickByRole(page, role, name) {
+  const exactLocator = page.getByRole(role, { name, exact: true });
+  if (await exactLocator.count()) {
+    await exactLocator.first().click();
+    return;
+  }
+  await page.getByRole(role, { name }).first().click();
+}
+
+async function expectText(page, text) {
+  const exactLocator = page.getByText(text, { exact: true }).first();
+  try {
+    await expect(exactLocator).toBeVisible({ timeout: 1000 });
+    return;
+  } catch (error) {
+    await expect(page.getByText(text).first()).toBeVisible();
+  }
+}
+
+for (const item of cases) {
   test(item.title, async ({ page }) => {
     for (const action of item.actions) {
       if (action.action === 'goto') {
         await page.goto(action.url);
       } else if (action.action === 'fill_label') {
-        await page.getByLabel(action.label, { exact: true }).fill(action.value);
+        await fillByLabel(page, action.label, action.value);
       } else if (action.action === 'click_role') {
-        await page.getByRole(action.role, { name: action.name, exact: true }).click();
+        await clickByRole(page, action.role, action.name);
       } else if (action.action === 'expect_text') {
-        await expect(page.getByText(action.text, { exact: true }).first()).toBeVisible();
+        await expectText(page, action.text);
       } else if (action.action === 'expect_url') {
         await expect(page).toHaveURL(new RegExp(action.pattern));
       } else {
