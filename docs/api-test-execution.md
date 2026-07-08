@@ -15,24 +15,20 @@
 
 | 项目 | 数量 |
 | --- | --- |
-| 自动化用例总数 | 13 |
-| 执行通过 | 12 |
-| 预期失败 | 1 |
-| 执行失败 | 0 |
+| 自动化用例总数 | 12 |
+| 执行通过 | 11 |
+| 执行失败 | 1 |
 | 发现缺陷 | 1 |
 
 说明：
 
-自动化测试中包含两类短用户名相关用例：
-
-1. `test_register_rejects_short_username_by_requirement`：按 PRD-FR-003 和 REG-002 断言短用户名应注册失败。该用例标记为 `xfail`，用于明确展示当前缺陷。
-2. `test_preseeded_defect_short_username_registers_successfully`：验证当前预埋缺陷实际存在。该用例证明当前系统允许 `username=abc` 注册成功，与 PRD-FR-003 的期望行为不一致。
+自动化测试中的短用户名相关用例为 `test_register_rejects_short_username_by_requirement`。该用例按 PRD-FR-003 和 REG-002 断言短用户名应注册失败。当前系统实际返回注册成功，因此该用例失败，并形成 BUG-001 的真实测试证据。
 
 ## 3. 命令输出
 
 ```text
-.....x.......                                                            [100%]
-12 passed, 1 xfailed in 0.87s
+.....F......                                                             [100%]
+1 failed, 11 passed in 0.78s
 ```
 
 ## 4. 接口执行明细
@@ -44,14 +40,13 @@
 | API-EXEC-003 | TC-REG-004 | `/api/register` | POST | 通过 | 空密码被拒绝 |
 | API-EXEC-004 | TC-REG-005 | `/api/register` | POST | 通过 | 两次密码不一致被拒绝 |
 | API-EXEC-005 | TC-REG-006 | `/api/register` | POST | 通过 | 重复用户名被拒绝 |
-| API-EXEC-006 | TC-REG-003 | `/api/register` | POST | 预期失败 | 按需求短用户名应被拒绝，当前实现未拒绝 |
+| API-EXEC-006 | TC-REG-003 | `/api/register` | POST | 失败 | 按需求短用户名应被拒绝，当前实现未拒绝 |
 | API-EXEC-007 | TC-LOGIN-001 | `/api/login` | POST | 通过 | 正确账号密码登录成功 |
 | API-EXEC-008 | TC-LOGIN-002 | `/api/login` | POST | 通过 | 错误密码登录失败 |
 | API-EXEC-009 | TC-LOGIN-003 | `/api/login` | POST | 通过 | 未注册用户登录失败 |
 | API-EXEC-010 | TC-ME-001 | `/api/me` | GET | 通过 | 未登录访问当前用户失败 |
 | API-EXEC-011 | TC-ME-002 | `/api/me` | GET | 通过 | 登录后可获取当前用户 |
 | API-EXEC-012 | TC-LOGOUT-001 | `/api/logout` | POST | 通过 | 退出登录后登录态清除 |
-| API-EXEC-013 | TC-REG-003 | `/api/register` | POST | 发现缺陷 | 短用户名 `abc` 注册成功 |
 
 ## 5. 缺陷结论
 

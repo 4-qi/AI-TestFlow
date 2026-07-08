@@ -115,8 +115,10 @@ conda run -n AI-TestFlow python -m pytest -q backend/tests
 已验证结果：
 
 ```text
-12 passed, 1 xfailed
+1 failed, 11 passed
 ```
+
+说明：当前失败用例是预埋缺陷 BUG-001 的真实测试结果。项目用于演示从需求到测试失败再到 Bug 单的完整流程，因此该失败是预期业务现象，不是测试脚本写错。
 
 ## 7. 预埋缺陷
 
