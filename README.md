@@ -77,7 +77,7 @@ npm install
 在项目根目录执行：
 
 ```bash
-conda run -n AI-TestFlow python backend/app.py
+conda run --no-capture-output -n AI-TestFlow python backend/app.py
 ```
 
 后端地址：
@@ -85,6 +85,10 @@ conda run -n AI-TestFlow python backend/app.py
 ```text
 http://127.0.0.1:5000
 ```
+
+说明：
+
+后端启动后会一直占用当前终端，这是正常现象。看到 `Backend URL: http://127.0.0.1:5000` 后，保持该终端运行，再打开一个新终端启动前端。停止后端时，在后端终端按 `Ctrl + C`。
 
 ## 5. 启动前端
 

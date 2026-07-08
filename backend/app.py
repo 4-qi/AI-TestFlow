@@ -137,5 +137,9 @@ app = create_app()
 
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5000, debug=True)
-
+    print("AI-TestFlow Flask backend is starting...", flush=True)
+    print("Backend URL: http://127.0.0.1:5000", flush=True)
+    print("Health check: http://127.0.0.1:5000/api/me", flush=True)
+    print("Stop backend: press Ctrl + C in this terminal", flush=True)
+    print("Start frontend in another terminal: cd frontend && npm run dev", flush=True)
+    app.run(host="127.0.0.1", port=5000, debug=True, use_reloader=False)
