@@ -35,13 +35,19 @@ PRD分析 -> 需求拆解 -> 测试用例设计 -> 脚本生成 -> 执行测试 
 conda run --no-capture-output -n AI-TestFlow python -m ai_testflow agent-run
 ```
 
-必须配置：
+必须配置 `ai-testflow.yml` 中 `llm.api_key_env` 指向的环境变量。当前默认配置为：
 
 ```bash
 export DEEPSEEK_API_KEY=你的 DeepSeek API Key
 ```
 
-无 Key 时必须失败，不允许退回硬编码规则。
+如果切换为 OpenAI，需要配置：
+
+```bash
+export OPENAI_API_KEY=你的 OpenAI API Key
+```
+
+无对应 Key 时必须失败，不允许退回硬编码规则。
 
 ## 4. 输入边界
 

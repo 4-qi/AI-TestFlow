@@ -17,13 +17,19 @@ AI Testing Workflow：多角色测试工程师 Agent，项目核心
 conda run --no-capture-output -n AI-TestFlow python -m ai_testflow agent-run
 ```
 
-运行前必须配置：
+运行前必须配置 `ai-testflow.yml` 中 `llm.api_key_env` 指向的环境变量。当前默认配置为：
 
 ```bash
 export DEEPSEEK_API_KEY=你的 DeepSeek API Key
 ```
 
-如果未配置 `DEEPSEEK_API_KEY`，`agent-run` 必须直接报错，不允许退回硬编码规则流程。
+如果切换为 OpenAI，需要在 `.env` 或当前终端中配置：
+
+```bash
+export OPENAI_API_KEY=你的 OpenAI API Key
+```
+
+如果未配置对应 Key，`agent-run` 必须直接报错，不允许退回硬编码规则流程。
 
 ## 3. 多 Agent 流程
 

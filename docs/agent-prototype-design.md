@@ -29,13 +29,19 @@ Demo 系统只作为被测对象，真正项目价值在 AI Testing Workflow。
 conda run --no-capture-output -n AI-TestFlow python -m ai_testflow agent-run
 ```
 
-必须配置：
+必须配置 `ai-testflow.yml` 中 `llm.api_key_env` 指向的环境变量。当前默认配置为：
 
 ```bash
 export DEEPSEEK_API_KEY=你的 DeepSeek API Key
 ```
 
-没有 Key 时必须失败，不允许退回硬编码流程。
+如果切换为 OpenAI，需要配置：
+
+```bash
+export OPENAI_API_KEY=你的 OpenAI API Key
+```
+
+没有对应 Key 时必须失败，不允许退回硬编码流程。
 
 ## 4. 输入和样例
 

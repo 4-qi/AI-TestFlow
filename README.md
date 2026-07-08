@@ -300,7 +300,7 @@ conda run -n AI-TestFlow python -m pytest -q tests
 已验证结果：
 
 ```text
-9 passed
+21 passed
 ```
 
 ## 10. 预埋缺陷
@@ -355,4 +355,37 @@ AI_TESTFLOW_ENTRYPOINT.md
 
 ```text
 prompts/ai-testflow-inspection.md
+```
+
+## 13. 提交 GitHub 前检查
+
+建议提交前确认工作区干净：
+
+```bash
+git status --short
+```
+
+下面这些文件只保存在本地，不提交到 GitHub：
+
+```text
+.env
+node_modules/
+ai-testflow-runs/
+frontend/generated-tests/
+test-results/
+backend/instance/
+__pycache__/
+.pytest_cache/
+```
+
+当前远程仓库地址可用以下命令查看：
+
+```bash
+git remote -v
+```
+
+推送当前 `master` 分支：
+
+```bash
+git push -u origin master
 ```
