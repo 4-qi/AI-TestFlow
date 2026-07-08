@@ -5,7 +5,7 @@ import json
 import pytest
 
 from ai_testflow.agent.llm_client import LlmSettings, OpenAILlmClient, _unwrap_named_object
-from ai_testflow.agent.agents.script_agent import run_script_agent
+from ai_testflow.agent.agents.script_agent import _align_api_expectations_with_test_cases, run_script_agent
 from ai_testflow.agent_designer import design_requirements_from_prd, design_test_cases_from_requirements
 from ai_testflow.analyzer import analyze_prd, build_requirements, extract_requirement_rows, extract_test_case_rows
 from ai_testflow.config import load_config
@@ -354,6 +354,45 @@ def test_script_agent_uses_structured_plan_to_generate_scripts(tmp_path):
     playwright_text = playwright_target.read_text(encoding="utf-8")
     assert "const cases =" in playwright_text
     assert "fill_label" in playwright_text
+
+
+def test_script_agent_aligns_negative_case_expectations():
+    script_plan = {
+        "api_tests": [
+            {
+                "test_case_id": "TC-003",
+                "name": "用户名长度小于6位",
+                "setup_api_actions": [],
+                "method": "POST",
+                "path": "/api/register",
+                "json_body": {
+                    "username": "abc",
+                    "password": "Test1234",
+                    "confirm_password": "Test1234",
+                },
+                "expected_status": 200,
+                "expected_json_contains": {
+                    "success": True,
+                },
+            }
+        ],
+        "ui_tests": [],
+    }
+    test_cases = [
+        {
+            "test_case_id": "TC-003",
+            "title": "用户名长度小于6位",
+            "precondition": "注册页面打开",
+            "steps": ["输入用户名 abc", "点击注册"],
+            "test_data": "username=abc",
+            "expected_result": "注册失败，后端API返回错误",
+        }
+    ]
+
+    aligned = _align_api_expectations_with_test_cases(script_plan, test_cases)
+
+    assert aligned["api_tests"][0]["expected_status"] == 400
+    assert aligned["api_tests"][0]["expected_json_contains"]["success"] is False
 
 
 def test_generated_api_tests_run_setup_actions(tmp_path):
