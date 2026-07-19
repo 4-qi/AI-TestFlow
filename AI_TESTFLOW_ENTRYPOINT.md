@@ -1,97 +1,51 @@
-# AI-TestFlow 真 Agent 检验入口
+# AI-TestFlow Agent 运行入口
 
-## 1. 定位
+## 1. 主命令
 
-本项目的核心不是登录注册 Demo 本身，而是右侧 AI Testing Workflow。
-
-```text
-Demo 系统：React + Flask 登录注册，被测试对象
-AI Testing Workflow：多角色测试工程师 Agent，项目核心
-```
-
-## 2. 主入口
-
-运行真正测试工程师 Agent：
+在项目根目录执行：
 
 ```bash
 conda run --no-capture-output -n AI-TestFlow python -m ai_testflow agent-run
 ```
 
-运行前必须配置 `ai-testflow.yml` 中 `llm.api_key_env` 指向的环境变量。当前默认配置为：
+`--no-capture-output` 用于实时显示每个 Agent 的运行阶段。运行前必须在 `.env` 中配置 `ai-testflow.yml` 的 `llm.api_key_env` 所指向的 Key。
 
-```bash
-export DEEPSEEK_API_KEY=你的 DeepSeek API Key
-```
-
-如果切换为 OpenAI，需要在 `.env` 或当前终端中配置：
-
-```bash
-export OPENAI_API_KEY=你的 OpenAI API Key
-```
-
-如果未配置对应 Key，`agent-run` 必须直接报错，不允许退回硬编码规则流程。
-
-## 3. 多 Agent 流程
+## 2. 执行流程
 
 ```text
-docs/prd.md
-  -> PRD Agent：提取业务规则和接口范围
-  -> Requirement Agent：拆测试点和验收标准
-  -> Test Case Agent：设计接口和页面测试用例
-  -> Script Agent：生成 pytest 和 Playwright 脚本
-  -> Execute Agent：执行自动化测试
-  -> Analysis Agent：分析实际结果和期望结果
-  -> Report Agent：生成测试报告
-  -> Bug Agent：生成 Bug 单
+读取 PRD
+  -> 检索本地测试知识
+  -> 拆解需求与风险
+  -> 生成 API / Browser 探索任务
+  -> 启动被测服务
+  -> API Agent 实时发送请求
+  -> Browser Agent 实时观察和操作浏览器
+  -> 分类执行结果并确认产品缺陷
+  -> 将 passed 轨迹沉淀为回归脚本
+  -> 生成测试报告和 Bug 单
 ```
 
-`docs/samples/` 下的需求规格、测试用例、测试报告、Bug 单只是参考样例，不是 Agent 主流程输入。
+首次执行阶段不会生成 pytest 或 Playwright 脚本。页面截图只保存为证据，不会发送给当前文本模型。
 
-## 4. 运行产物
+## 3. 读取结果
 
-产物输出到：
+运行结束后先读取：
 
 ```text
-ai-testflow-runs/latest/
+ai-testflow-runs/latest/inspection-summary.json
+ai-testflow-runs/latest/execution-result.json
+ai-testflow-runs/latest/defect-analysis.json
+ai-testflow-runs/latest/generated-test-report.md
+ai-testflow-runs/latest/generated-bug-report.md
+ai-testflow-runs/latest/automation-manifest.json
 ```
 
-核心产物：
+需要审计具体过程时，再读取 API 和 Browser 的 action、observation JSONL 文件及 `screenshots/`。
 
-```text
-workflow-state.json
-prd-analysis.json
-requirements.json
-test-points.json
-test-cases.json
-script-plan.json
-generated_api_tests.py
-generated_playwright_tests.spec.js
-pytest-output.txt
-playwright-output.txt
-execution-result.json
-defect-analysis.json
-generated-test-report.md
-generated-bug-report.md
-```
+## 4. 状态含义
 
-## 5. 验收判断
+- `passed`：所有已执行任务通过。
+- `defects_found`：发现证据完整的产品缺陷，工作流本身执行成功。
+- `execution_blocked`：没有确认产品缺陷，但存在无法完成的任务。
 
-本项目保留预埋业务缺陷：
-
-```text
-PRD-FR-003 -> REG-002 -> TC-REG-003 -> BUG-001
-```
-
-期望：
-
-```text
-短用户名 abc 注册应失败，HTTP 400
-```
-
-实际：
-
-```text
-当前后端注册接口未校验用户名长度，可能返回 HTTP 200
-```
-
-Agent 必须基于 PRD、测试用例和执行结果判断该问题为业务规则缺陷，并生成测试报告和 Bug 单。
+只有配置、服务启动、LLM 或框架自身失败时命令返回非零状态码。

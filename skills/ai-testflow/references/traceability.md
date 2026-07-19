@@ -1,55 +1,18 @@
 # AI-TestFlow Traceability
 
-Use this file when explaining defect mappings discovered by the AI-TestFlow skill.
+Use this contract only after the current Agent run has completed.
 
-## Current Demo Defect Example
-
-```text
-PRD-FR-003 -> REG-002 -> AC-003 -> TC-REG-003 -> BUG-001
-```
-
-This is the current Demo's discovered defect, not the only chain the one-stop workflow can represent.
-
-## Meaning
-
-| ID | Meaning |
-| --- | --- |
-| `PRD-FR-003` | 用户注册时，用户名长度必须大于等于 6 位 |
-| `REG-002` | `username` 长度必须大于等于 6 位 |
-| `AC-003` | 用户名长度小于 6 位时注册失败 |
-| `TC-REG-003` | 用户名长度小于 6 位注册失败 |
-| `BUG-001` | 注册接口未校验用户名长度，短用户名可注册成功 |
-
-## Expected Generated Test Behavior
-
-The generated API action sends:
-
-```json
-{
-  "username": "abc",
-  "password": "Password123",
-  "confirm_password": "Password123"
-}
-```
-
-Expected behavior:
+Every reported product defect must link:
 
 ```text
-HTTP 400
-用户名长度不能少于6位
+requirement_id
+  -> test_point_id
+  -> charter_id
+  -> execution_id
+  -> evidence_paths
+  -> bug_id
 ```
 
-Actual behavior in the intentional Demo defect:
+The exact identifiers must come from `requirements.json`, `test-points.json`, `test-charters.json`, `defect-analysis.json` and the action/observation logs. Do not reuse identifiers from previous runs and do not read `docs/samples/demo-defect-ground-truth.md` before testing.
 
-```text
-HTTP 200
-注册成功
-```
-
-## Reporting Sentence
-
-Use this concise explanation for the current Demo defect:
-
-```text
-AI-TestFlow 检验确认：PRD-FR-003 要求用户名长度必须大于等于 6 位，但后端注册接口未实现 REG-002；TC-REG-003 因实际返回 HTTP 200 而失败，该失败形成 BUG-001。
-```
+Only an execution with status `failed` and Analysis classification `product_defect` may appear in the generated Bug report. `test_data_issue`, `environment_failure` and `agent_blocked` remain execution findings rather than product Bugs.

@@ -2,7 +2,7 @@
 
 多角色测试工程师 Agent + React Flask 登录注册 Demo。
 
-本仓库用于验证真正的 AI Testing Workflow：从 PRD 分析、需求拆解、测试用例设计、接口与页面自动化执行、测试报告生成到 Bug 单提交。
+本仓库用于验证真正的 AI Testing Workflow：从 PRD 分析、测试知识检索、需求拆解、探索任务设计、实时接口与浏览器测试、测试报告生成到 Bug 单提交，并在测试通过后沉淀回归脚本。
 
 当前项目分为两块：
 
@@ -19,6 +19,8 @@ AI-TestFlow/
     ai-testflow-agent.md
     ai-testflow-agent.yaml
   ai_testflow/
+  knowledge/
+    testing/
   skills/
     ai-testflow/
       SKILL.md
@@ -44,6 +46,7 @@ AI-TestFlow/
     api-test-execution.md
     plugin-prototype-design.md
     agent-prototype-design.md
+    testing-agent-evolution-roadmap.md
   prompts/
     ai-testflow-inspection.md
   tests/
@@ -92,14 +95,16 @@ conda run --no-capture-output -n AI-TestFlow python -m ai_testflow agent-run
 1. 读取 `ai-testflow.yml`。
 2. 读取 `docs/prd.md`。
 3. PRD Agent 调用大模型分析 PRD。
-4. Requirement Agent 调用大模型拆测试点。
-5. Test Case Agent 调用大模型设计测试用例。
-6. Script Agent 生成 pytest 和 Playwright 脚本。
-7. Script Review Agent 基于 PRD、测试用例和源码审查脚本动作，修正无证据断言、缺失前置条件和不稳定定位。
-8. Execute Agent 执行接口和页面自动化。
-9. Analysis Agent 基于真实执行日志判断缺陷、测试脚本问题或环境问题。
-10. Report Agent 生成测试报告。
-11. Bug Agent 生成 Bug 单。
+4. Knowledge Agent 从本地 YAML 知识库检索测试经验。
+5. Requirement Agent 拆解需求、风险和测试点。
+6. Test Design Agent 生成 API 或 Browser 探索测试任务，不生成固定脚本。
+7. API Agent 通过实时 HTTP 会话执行接口探索测试。
+8. Browser Agent 拉起本地 Chromium，循环执行“结构化观察 -> 决策 -> 语义操作”。
+9. Analysis Agent 将结果分类为产品缺陷、测试数据问题、环境失败、Agent 阻塞或通过。
+10. Report Agent 和 Bug Agent 生成测试报告与证据充分的 Bug 单。
+11. Automation Agent 最后只把已通过的执行轨迹沉淀为 pytest 或 Playwright 回归脚本。
+
+为控制真实模型调用时间，`execution_policy.max_charters_per_channel` 限制每个渠道单轮执行的任务数。Test Design Agent 按优先级输出任务，未进入本轮预算的任务会记录在 `workflow-state.json` 和终端摘要中，不会被伪装成已执行或通过。
 
 运行前必须配置 `.env`：
 
@@ -147,13 +152,13 @@ model: deepseek-v4-flash
 
 `.env` 只保存在本地，不要提交到 Git；`.env.example` 用于说明需要哪些环境变量，可以提交。
 
-当前 Demo 中被发现的缺陷实例链路是：
+当前 Demo 的验收基准链路是：
 
 ```text
 PRD-FR-003 -> REG-002 -> AC-003 -> TC-REG-003 -> BUG-001
 ```
 
-这条链只是当前 Demo 的缺陷实例。Agent 的输出以 `defect-analysis.json` 里的 `defects` 列表为准，后续增加更多需求、用例和失败测试时，可以输出多条缺陷链。
+该链路只用于验收。缺陷答案保存在 `docs/samples/demo-defect-ground-truth.md`，不属于 Agent 输入。Agent 的真实输出以 `defect-analysis.json` 中的 `defects` 列表为准。
 
 运行产物输出到：
 
@@ -169,24 +174,25 @@ workflow-state.json
 prd-analysis.json
 requirements.json
 test-points.json
-test-cases.json
-script-plan.json
-pytest-output.txt
-generated_api_tests.py
-playwright-output.txt
+knowledge-context.json
+test-charters.json
+api-action-log.jsonl
+api-observations.jsonl
+api-execution-result.json
+browser-action-log.jsonl
+browser-observations.jsonl
+browser-execution-result.json
 execution-result.json
 defect-analysis.json
 generated-test-report.md
 generated-bug-report.md
+automation-manifest.json
+regression/
 ```
 
-页面自动化脚本生成到：
+首次执行阶段不会生成 pytest 或 Playwright 测试脚本。API Agent 实时发送 HTTP 请求，Browser Agent 实时调用固定 Playwright Controller。只有状态为 `passed` 的轨迹才会在流程末尾写入 `regression/`。
 
-```text
-frontend/generated-tests/generated_playwright_tests.spec.js
-```
-
-说明：Agent 不依赖登录注册 Demo 的固定规则。Demo 只是当前被测对象；测试点、测试用例、脚本动作和缺陷判断都来自 PRD、源码和真实执行日志。真实测试执行结果请看 `inspection-summary.json` 中的 `pytest_exit_code`、`playwright_exit_code`、`failed_test_names` 和 `defects`。
+说明：Agent 不依赖登录注册 Demo 的固定规则，也不读取完整前端源码。Demo 只是当前被测对象；测试目标来自 PRD 和通用测试知识，测试结论来自真实接口响应和页面观察。
 
 ## 4. Agent 原型
 
@@ -201,16 +207,16 @@ Agent 的职责是模拟测试工程师团队：
 
 ```text
 PRD Agent
+  -> Knowledge Agent
   -> Requirement Agent
-  -> Test Case Agent
-  -> Script Agent
-  -> Execute Agent
+  -> Test Design Agent
+  -> API Agent / Browser Agent
   -> Analysis Agent
-  -> Report Agent
-  -> Bug Agent
+  -> Report Agent / Bug Agent
+  -> Automation Agent
 ```
 
-`run-all` 保留为旧兼容入口，不再作为主推演示方式。
+CLI 只保留 `agent-run` 作为公开入口，避免旧规则流程与实时 Agent 流程混淆。
 
 ## 5. Skill 组件运行方式
 
@@ -241,7 +247,10 @@ conda run -n AI-TestFlow pip install -r backend/requirements.txt
 ```bash
 cd frontend
 npm install
+npx playwright install chromium
 ```
+
+`npx playwright install chromium` 安装 Browser Agent 实时控制所需的 Chromium，不会生成页面测试脚本。
 
 ## 7. 启动 Demo 后端
 
@@ -286,7 +295,7 @@ conda run -n AI-TestFlow python -m pytest -q backend/tests
 已验证结果：
 
 ```text
-1 failed, 11 passed
+1 failed, 12 passed
 ```
 
 说明：当前失败用例是预埋缺陷 BUG-001 的真实测试结果。项目用于演示从需求到测试失败再到 Bug 单的完整流程，因此该失败是预期业务现象，不是测试脚本写错。
@@ -342,6 +351,7 @@ PRD-FR-003 -> REG-002 -> AC-003 -> TC-REG-003 -> BUG-001
 | Bug 单样例 | `docs/samples/bug-report.sample.md` |
 | 插件原型设计 | `docs/plugin-prototype-design.md` |
 | Agent 原型设计 | `docs/agent-prototype-design.md` |
+| 测试 Agent 三阶段演进路线 | `docs/testing-agent-evolution-roadmap.md` |
 
 ## 12. AI 检验入口
 

@@ -1,62 +1,41 @@
-# AI 自动化测试 Workflow 原型设计
+# AI-TestFlow 插件原型设计
 
-## 1. 原型目标
+## 1. 原型定位
 
-本项目不再把登录注册 Demo 当作核心成果。Demo 是被测对象，核心成果是 AI Testing Workflow。
-
-```text
-React + Flask Demo
-       ▲
-       │ 被测试
-       │
-AI Testing Workflow
-```
-
-## 2. 主流程
+AI-TestFlow 当前以本地 CLI + 多角色 Agent + Skill 的形式验证一站式测试工作流。React + Flask Demo 是被测对象，不是插件本体。
 
 ```text
 PRD
-  -> PRD Agent
-  -> Requirement Agent
-  -> Test Case Agent
-  -> Script Agent
-  -> Execute Agent
-  -> Analysis Agent
-  -> Report Agent
-  -> Bug Agent
+  -> 测试知识检索
+  -> 需求和风险拆解
+  -> 探索测试任务设计
+  -> 实时 API / Browser 测试
+  -> 结果分类
+  -> 报告与 Bug
+  -> 通过轨迹自动化
 ```
 
-主命令：
+## 2. 组件
 
-```bash
-conda run --no-capture-output -n AI-TestFlow python -m ai_testflow agent-run
-```
-
-## 3. 技术边界
-
-| 模块 | 职责 |
+| 组件 | 作用 |
 | --- | --- |
-| 大模型 Agent | 理解 PRD、拆需求、设计用例、分析缺陷、写报告 |
-| 本地执行器 | 读写文件、生成脚本、调用 pytest 和 Playwright |
-| Demo 系统 | 被测登录注册系统 |
-| 运行产物 | 保存每个阶段证据 |
+| CLI | 提供统一 `agent-run` 入口和实时进度 |
+| LLM Client | 支持 DeepSeek 与 OpenAI 的结构化输出 |
+| Knowledge Base | 保存通用测试经验并提供本地检索 |
+| HTTP Controller | 实时发送接口请求、维护 Cookie 和记录响应 |
+| Playwright Controller | 维持浏览器会话并执行受限语义动作 |
+| Agent Orchestrator | 编排分析、设计、执行、分类、报告和自动化 |
+| Artifact Store | 将每个阶段结果保存为 JSON、JSONL、Markdown 和截图 |
+| Skill | 指导上层 AI 调用 CLI 并解释最新运行证据 |
 
-## 4. 样例文档处理
+## 3. 通用边界
 
-以下文档只作为人工交付物样例，不作为 Agent 主流程输入：
+- 被测项目通过 `ai-testflow.yml` 声明启动命令、就绪地址、API 地址和页面地址。
+- 首次测试只读取 PRD、通用测试知识和运行中的系统，不读取完整前端源码。
+- 页面模型动作不允许携带 CSS Selector、XPath 或 JavaScript。
+- 缺陷基准和历史样例不进入 Agent 输入。
+- 自动化脚本只能从本轮已通过轨迹生成。
 
-```text
-docs/samples/requirement-spec.sample.md
-docs/samples/test-cases.sample.md
-docs/samples/test-report.sample.md
-docs/samples/bug-report.sample.md
-```
+## 4. 后续形态
 
-## 5. 验收标准
-
-1. Agent 从 `docs/prd.md` 开始。
-2. Agent 调用大模型生成需求拆解和测试用例。
-3. Agent 生成接口和页面自动化脚本。
-4. Agent 执行 pytest 和 Playwright。
-5. Agent 识别 `BUG-001`。
-6. Agent 生成测试报告和 Bug 单。
+当前 CLI 可继续封装为 IDE 插件、Web 控制台或远程 Agent 服务。三阶段页面观察方案见 `docs/testing-agent-evolution-roadmap.md`。

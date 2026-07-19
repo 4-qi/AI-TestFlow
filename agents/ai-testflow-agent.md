@@ -2,91 +2,41 @@
 
 ## 1. 定位
 
-AI-TestFlow Agent 是一个即插即用的测试工程师角色集合，负责从 PRD 开始完成自动化测试全流程。
-
-Demo 系统只是被测对象：
+AI-TestFlow 是一个从需求开始工作的测试工程师 Agent 原型。它先使用知识库设计测试，再通过实时 HTTP 和浏览器工具探索被测系统，最后生成报告、Bug 单和已通过场景的回归脚本。
 
 ```text
-React + Flask 登录注册 Demo
+Demo 系统 = 被测对象
+AI Testing Workflow = 项目核心
 ```
 
-真正有价值的是 AI Testing Workflow：
+## 2. 工作流
 
-```text
-PRD分析 -> 需求拆解 -> 测试用例设计 -> 脚本生成 -> 执行测试 -> 分析结果 -> 测试报告 -> Bug 单
-```
+| 角色 | 职责 | 主要产物 |
+| --- | --- | --- |
+| PRD Agent | 提取业务目标、规则和接口范围 | `prd-analysis.json` |
+| Knowledge Agent | 检索通用测试经验 | `knowledge-context.json` |
+| Requirement Agent | 拆解需求、风险和测试点 | `requirements.json`、`test-points.json` |
+| Test Design Agent | 设计 API 或 Browser 探索任务 | `test-charters.json` |
+| API Agent | 实时发送请求并观察响应 | `api-*-log.jsonl`、`api-execution-result.json` |
+| Browser Agent | 实时观察并操作本地浏览器 | `browser-*-log.jsonl`、`browser-execution-result.json` |
+| Analysis Agent | 区分产品缺陷与执行问题 | `defect-analysis.json` |
+| Report / Bug Agent | 输出报告和缺陷单 | Markdown 报告 |
+| Automation Agent | 最后将通过轨迹沉淀为回归脚本 | `automation-manifest.json`、`regression/` |
 
-## 2. Agent 拆分
-
-| Agent | 作用 | 输入 | 输出 |
-| --- | --- | --- | --- |
-| PRD Agent | 提取业务规则 | `docs/prd.md` | `prd-analysis.json` |
-| Requirement Agent | 拆测试点 | PRD 分析结果 | `requirements.json`、`test-points.json` |
-| Test Case Agent | 写测试用例 | 测试点 | `test-cases.json` |
-| Script Agent | 生成自动化脚本 | 测试用例 | `script-plan.json`、`generated_api_tests.py`、`generated_playwright_tests.spec.js` |
-| Execute Agent | 执行测试 | 自动化脚本 | `execution-result.json`、测试日志 |
-| Analysis Agent | 判断缺陷 | 需求、用例、日志 | `defect-analysis.json` |
-| Report Agent | 汇总测试结果 | 全部上游产物 | `generated-test-report.md` |
-| Bug Agent | 生成 Bug 单 | 缺陷分析 | `generated-bug-report.md` |
-
-## 3. 主入口
+## 3. 运行
 
 ```bash
 conda run --no-capture-output -n AI-TestFlow python -m ai_testflow agent-run
 ```
 
-必须配置 `ai-testflow.yml` 中 `llm.api_key_env` 指向的环境变量。当前默认配置为：
+首次执行不生成测试脚本。Browser Agent 不读取完整前端源码，不允许模型输出 CSS Selector、XPath 或 JavaScript；API Agent 和 Browser Agent 每次只能提交一个结构化动作。
 
-```bash
-export DEEPSEEK_API_KEY=你的 DeepSeek API Key
-```
+## 4. 结论规则
 
-如果切换为 OpenAI，需要配置：
+- `product_defect`：真实行为违反明确需求，允许生成 Bug。
+- `test_data_issue`：测试数据或前置条件问题，不生成 Bug。
+- `environment_failure`：服务、网络或浏览器环境问题，不生成 Bug。
+- `agent_blocked`：达到最大步骤或无法可靠操作，不生成 Bug。
+- `passed`：测试目标满足，可以交给 Automation Agent 沉淀回归脚本。
 
-```bash
-export OPENAI_API_KEY=你的 OpenAI API Key
-```
-
-无对应 Key 时必须失败，不允许退回硬编码规则。
-
-## 4. 输入边界
-
-主业务输入只有：
-
-```text
-docs/prd.md
-```
-
-被测实现输入：
-
-```text
-backend/
-frontend/
-```
-
-样例参考：
-
-```text
-docs/samples/
-```
-
-样例参考不是 Agent 主流程输入。
-
-## 5. 输出产物
-
-```text
-ai-testflow-runs/latest/workflow-state.json
-ai-testflow-runs/latest/prd-analysis.json
-ai-testflow-runs/latest/requirements.json
-ai-testflow-runs/latest/test-points.json
-ai-testflow-runs/latest/test-cases.json
-ai-testflow-runs/latest/script-plan.json
-ai-testflow-runs/latest/generated_api_tests.py
-ai-testflow-runs/latest/generated_playwright_tests.spec.js
-ai-testflow-runs/latest/pytest-output.txt
-ai-testflow-runs/latest/playwright-output.txt
-ai-testflow-runs/latest/execution-result.json
-ai-testflow-runs/latest/defect-analysis.json
-ai-testflow-runs/latest/generated-test-report.md
-ai-testflow-runs/latest/generated-bug-report.md
-```
+三阶段观察能力路线见 `docs/testing-agent-evolution-roadmap.md`。

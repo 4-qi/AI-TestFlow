@@ -1,61 +1,27 @@
-# 接口自动化测试执行记录
+# 实时 API 测试执行说明
 
-## 1. 执行环境
+## 1. 执行方式
 
-| 项目 | 内容 |
-| --- | --- |
-| 执行日期 | 2026-07-07 |
-| Python 环境 | Conda `AI-TestFlow` |
-| Python 版本 | 3.10.20 |
-| 测试框架 | pytest 8.2.2 |
-| 被测模块 | Flask 后端接口 |
-| 测试命令 | `conda run -n AI-TestFlow python -m pytest -q ai-testflow-runs/latest/generated_api_tests.py` |
+Agent 主流程中的接口首次测试不再生成 pytest。API Agent 根据测试任务和最新响应，每次输出一个结构化 `request` 或 `finish` 动作；HTTP Controller 负责发送真实请求、维护 Cookie 并记录证据。
 
-## 2. 执行结果摘要
+运行命令：
 
-| 项目 | 数量 |
-| --- | --- |
-| 自动化用例总数 | 12 |
-| 执行通过 | 11 |
-| 执行失败 | 1 |
-| 发现缺陷 | 1 |
-
-说明：
-
-自动化测试中的短用户名相关用例由 Script Agent 生成通用 API 动作，并由 pytest 动作执行器运行。该动作按 PRD-FR-003 和 REG-002 断言短用户名应注册失败。当前系统实际返回注册成功，因此该用例失败，并形成 BUG-001 的真实测试证据。
-
-## 3. 命令输出
-
-```text
-..F.........                                                             [100%]
-FAILED ai-testflow-runs/latest/generated_api_tests.py::<运行时生成的 pytest 测试名>
-1 failed, 11 passed in 0.86s
+```bash
+conda run --no-capture-output -n AI-TestFlow python -m ai_testflow agent-run
 ```
 
-## 4. 接口执行明细
+## 2. 运行证据
 
-| 测试编号 | 关联用例 | 接口 | 请求方法 | 执行结果 | 说明 |
-| --- | --- | --- | --- | --- | --- |
-| API-EXEC-001 | TC-REG-001 | `/api/register` | POST | 通过 | 合法用户注册成功 |
-| API-EXEC-002 | TC-REG-002 | `/api/register` | POST | 通过 | 空用户名被拒绝 |
-| API-EXEC-003 | TC-REG-004 | `/api/register` | POST | 通过 | 空密码被拒绝 |
-| API-EXEC-004 | TC-REG-005 | `/api/register` | POST | 通过 | 两次密码不一致被拒绝 |
-| API-EXEC-005 | TC-REG-006 | `/api/register` | POST | 通过 | 重复用户名被拒绝 |
-| API-EXEC-006 | TC-REG-003 | `/api/register` | POST | 失败 | 按需求短用户名应被拒绝，当前实现未拒绝 |
-| API-EXEC-007 | TC-LOGIN-001 | `/api/login` | POST | 通过 | 正确账号密码登录成功 |
-| API-EXEC-008 | TC-LOGIN-002 | `/api/login` | POST | 通过 | 错误密码登录失败 |
-| API-EXEC-009 | TC-LOGIN-003 | `/api/login` | POST | 通过 | 未注册用户登录失败 |
-| API-EXEC-010 | TC-ME-001 | `/api/me` | GET | 通过 | 未登录访问当前用户失败 |
-| API-EXEC-011 | TC-ME-002 | `/api/me` | GET | 通过 | 登录后可获取当前用户 |
-| API-EXEC-012 | TC-LOGOUT-001 | `/api/logout` | POST | 通过 | 退出登录后登录态清除 |
+```text
+ai-testflow-runs/latest/api-action-log.jsonl
+ai-testflow-runs/latest/api-observations.jsonl
+ai-testflow-runs/latest/api-execution-result.json
+```
 
-## 5. 缺陷结论
+每次请求记录方法、路径、查询参数、请求体、响应状态码、响应体、Cookie 名称和耗时。API Agent 必须基于这些真实观察结束任务为 `passed`、`failed` 或 `blocked`。
 
-| 项目 | 内容 |
-| --- | --- |
-| 缺陷编号 | BUG-001 |
-| 关联需求 | PRD-FR-003 |
-| 关联用例 | TC-REG-003 |
-| 请求数据 | `username=abc`, `password=Password123`, `confirm_password=Password123` |
-| 期望结果 | 注册失败，提示 `用户名长度不能少于6位` |
-| 实际结果 | 注册成功，提示 `注册成功` |
+## 3. 与回归脚本的区别
+
+首次探索完成后，Automation Agent 只读取 `passed` API 轨迹，并在 `ai-testflow-runs/latest/regression/` 下生成 pytest 回归脚本。缺陷任务需要修复并重新验证通过后才会进入自动化沉淀。
+
+`backend/tests/` 是 Demo 工程自身的历史回归测试，不是实时 Agent 首次测试入口。
