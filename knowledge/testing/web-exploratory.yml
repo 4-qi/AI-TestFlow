@@ -1,0 +1,19 @@
+knowledge_id: KB-WEB-001
+title: Web 页面探索测试
+tags:
+  - web
+  - 页面
+  - 导航
+  - 交互
+  - 状态
+applicable_channels:
+  - browser
+heuristics:
+  - 从用户可见入口探索主要业务路径
+  - 观察操作前后页面、地址和可交互控件变化
+  - 验证成功、失败和中断状态是否向用户提供明确反馈
+  - 检查返回、刷新和重复操作后的状态一致性
+evidence_requirements:
+  - 记录当前 URL 和页面标题
+  - 记录关键操作和操作后的可见文本
+  - 记录 Console 错误和失败的网络请求

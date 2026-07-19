@@ -4,41 +4,54 @@ llm:
   model: deepseek-v4-pro
   api_key_env: DEEPSEEK_API_KEY
   base_url: https://api.deepseek.com
-api_test_runtime:
-  mode: flask_app
-  app_factory: backend.app:create_app
+  request_timeout_seconds: 120
+  max_retries: 1
+knowledge_base:
+  path: knowledge/testing
+  top_k: 4
+target_runtime:
+  startup_timeout_seconds: 30
+  services:
+    - name: backend
+      cwd: .
+      command:
+        - conda
+        - run
+        - --no-capture-output
+        - -n
+        - AI-TestFlow
+        - python
+        - backend/app.py
+      ready_url: http://127.0.0.1:5000/api/health
+    - name: frontend
+      cwd: frontend
+      command:
+        - npm
+        - run
+        - dev
+        - --
+        - --host
+        - 127.0.0.1
+      ready_url: http://127.0.0.1:5173
+api_runtime:
+  enabled: true
+  base_url: http://127.0.0.1:5000
+  request_timeout_seconds: 10
+  max_steps_per_charter: 4
+browser_runtime:
+  enabled: true
+  base_url: http://127.0.0.1:5173
+  browser: chromium
+  headless: true
+  observation_mode: structured
+  max_steps_per_charter: 6
+  action_timeout_ms: 10000
+  playwright_cwd: frontend
+  screenshot: on_finish
+automation:
+  enabled: true
+  output_dir: ai-testflow-runs/latest/regression
+execution_policy:
+  max_charters_per_channel: 4
 prd_path: docs/prd.md
-requirement_spec_path: docs/samples/requirement-spec.sample.md
-test_cases_path: docs/samples/test-cases.sample.md
-backend_source_path: backend/app.py
-pytest_path: backend/tests
-pytest_command:
-  - conda
-  - run
-  - -n
-  - AI-TestFlow
-  - python
-  - -m
-  - pytest
-  - -q
-  - backend/tests
-generated_tests_path: ai-testflow-runs/latest/generated_api_tests.py
-generated_pytest_command:
-  - conda
-  - run
-  - -n
-  - AI-TestFlow
-  - python
-  - -m
-  - pytest
-  - -q
-  - ai-testflow-runs/latest/generated_api_tests.py
-generated_playwright_tests_path: frontend/generated-tests/generated_playwright_tests.spec.js
-playwright_command:
-  - bash
-  - -lc
-  - cd frontend && npm exec playwright test generated-tests/generated_playwright_tests.spec.js --config playwright.config.js
-api_execution_report_path: docs/api-test-execution.md
-test_report_path: docs/samples/test-report.sample.md
-bug_report_path: docs/samples/bug-report.sample.md
 output_dir: ai-testflow-runs/latest

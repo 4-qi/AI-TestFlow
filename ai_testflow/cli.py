@@ -5,45 +5,20 @@ from pathlib import Path
 
 from .config import load_config
 from .agent.orchestrator import run_agent_workflow
-from .inspector import run_inspection
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="ai_testflow", description="AI-TestFlow CLI plugin prototype")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    for command_name in ["agent-run", "analyze-prd", "generate-cases", "generate-tests", "execute", "report", "run", "run-all"]:
-        command_parser = subparsers.add_parser(command_name, help=f"Run AI-TestFlow {command_name}")
-        command_parser.add_argument("--config", default="ai-testflow.yml", help="Path to ai-testflow.yml")
+    command_parser = subparsers.add_parser("agent-run", help="Run the live AI testing engineer workflow")
+    command_parser.add_argument("--config", default="ai-testflow.yml", help="Path to ai-testflow.yml")
 
     args = parser.parse_args(argv)
     if args.command == "agent-run":
         return _agent_run(args.config)
-    if args.command in {"analyze-prd", "generate-cases", "generate-tests", "execute", "report", "run", "run-all"}:
-        return _run(args.config, args.command)
-
     parser.error(f"Unsupported command: {args.command}")
     return 2
-
-
-def _run(config_path: str, command_name: str) -> int:
-    project_root = Path.cwd()
-    config = load_config(config_path)
-    result = run_inspection(config, project_root)
-
-    print(f"AI-TestFlow CLI {command_name} completed.")
-    print(f"Status: {result.summary['status']}")
-    print(f"Requirements: {result.summary['requirements_count']}")
-    print(f"Test cases: {result.summary['test_cases_count']}")
-    print(f"Passed tests: {result.summary['passed_tests']}")
-    print(f"Failed tests: {result.summary['failed_tests']}")
-    if result.summary["bug_id"]:
-        print(f"Bug: {result.summary['bug_id']}")
-        print(f"Requirement: {result.summary['requirement_id']}")
-        print(f"Test case: {result.summary['test_case_id']}")
-    print(f"Output directory: {config.output_dir}")
-
-    return 0
 
 
 def _agent_run(config_path: str) -> int:
@@ -52,7 +27,7 @@ def _agent_run(config_path: str) -> int:
     try:
         _print_agent_header(config_path, config.output_dir)
         result = run_agent_workflow(config, project_root, progress=_print_progress)
-    except (RuntimeError, ValueError) as exc:
+    except Exception as exc:
         print(f"AI-TestFlow Agent workflow failed: {exc}")
         return 1
 
@@ -73,31 +48,25 @@ def _print_agent_summary(summary: dict, output_dir: Path) -> None:
     print(f"- Status: {summary['status']}")
     print(f"- Requirements: {summary['requirements_count']}")
     print(f"- Test points: {summary['test_points_count']}")
-    print(f"- Test cases: {summary['test_cases_count']}")
-    print(f"- Pytest exit code: {summary.get('pytest_exit_code')}")
-    print(f"- Passed tests: {summary['passed_tests']}")
-    print(f"- Failed tests: {summary['failed_tests']}")
-    print(f"- Playwright exit code: {summary.get('playwright_exit_code')}")
-    print(f"- Playwright passed tests: {summary.get('playwright_passed_tests')}")
-    print(f"- Playwright failed tests: {summary.get('playwright_failed_tests')}")
-    failed_test_names = summary.get("failed_test_names", [])
-    if failed_test_names:
-        print("- Failed test names:")
-        for failed_test_name in failed_test_names:
-            print(f"  - {failed_test_name}")
-    playwright_failed_test_names = summary.get("playwright_failed_test_names", [])
-    if playwright_failed_test_names:
-        print("- Playwright failed test names:")
-        for failed_test_name in playwright_failed_test_names:
-            print(f"  - {failed_test_name}")
-    unclassified_api_failures = summary.get("unclassified_api_failures", [])
-    unclassified_playwright_failures = summary.get("unclassified_playwright_failures", [])
-    if unclassified_api_failures or unclassified_playwright_failures:
-        print("- Unclassified execution failures:")
-        for failed_test_name in unclassified_api_failures:
-            print(f"  - api | {failed_test_name}")
-        for failed_test_name in unclassified_playwright_failures:
-            print(f"  - playwright | {failed_test_name}")
+    print(f"- Test charters: {summary['test_charters_count']}")
+    api = summary["api"]
+    browser = summary["browser"]
+    print(f"- API: passed={api['passed']} failed={api['failed']} blocked={api['blocked']}")
+    print(
+        "- Browser: "
+        f"passed={browser['passed']} failed={browser['failed']} blocked={browser['blocked']}"
+    )
+    print(f"- Automated passed charters: {summary['automated_charters_count']}")
+    print(f"- Automation status: {summary['automation_status']}")
+    print(f"- LLM calls: {summary.get('llm_metrics', {}).get('llm_calls', 0)}")
+    selection = summary.get("execution_selection", {})
+    api_not_executed = selection.get("api_not_executed", [])
+    browser_not_executed = selection.get("browser_not_executed", [])
+    if api_not_executed or browser_not_executed:
+        print(
+            "- Not executed by configured budget: "
+            f"api={len(api_not_executed)} browser={len(browser_not_executed)}"
+        )
 
     defects = summary.get("defects", [])
     if defects:
@@ -105,11 +74,13 @@ def _print_agent_summary(summary: dict, output_dir: Path) -> None:
         for defect in defects:
             bug_id = defect.get("bug_id")
             requirement_id = defect.get("requirement_id")
-            test_case_id = defect.get("test_case_id")
-            failed_test_name = defect.get("failed_test_name")
-            detail = f"  - {bug_id} | requirement={requirement_id} | test_case={test_case_id}"
-            if failed_test_name:
-                detail += f" | failed_test={failed_test_name}"
+            charter_id = defect.get("charter_id")
+            execution_type = defect.get("execution_type")
+            execution_id = defect.get("execution_id")
+            detail = (
+                f"  - {bug_id} | requirement={requirement_id} | charter={charter_id} "
+                f"| execution={execution_type}:{execution_id}"
+            )
             print(detail)
     else:
         print("- Defects: none")

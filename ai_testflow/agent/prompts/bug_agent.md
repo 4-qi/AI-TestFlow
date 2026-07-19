@@ -5,3 +5,4 @@
 2. Bug 单必须包含标题、严重程度、优先级、关联需求、关联用例、复现步骤、期望结果、实际结果和修复建议。
 3. 不要生成未被执行结果支撑的缺陷。
 4. 输出必须严格符合 JSON Schema，markdown 字段放完整 Bug 单。
+5. `test_data_issue`、`environment_failure` 和 `agent_blocked` 不得生成 Bug 单。

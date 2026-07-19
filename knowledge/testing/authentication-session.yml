@@ -1,0 +1,22 @@
+knowledge_id: KB-AUTH-001
+title: 身份认证与会话测试
+tags:
+  - authentication
+  - auth
+  - 登录
+  - 注册
+  - 用户
+  - 会话
+  - 退出
+applicable_channels:
+  - browser
+  - api
+heuristics:
+  - 验证有效凭据和无效凭据的处理
+  - 验证登录前后受保护资源的访问状态
+  - 验证退出后会话失效且不能继续访问受保护内容
+  - 验证身份状态在连续请求和页面跳转中的一致性
+evidence_requirements:
+  - 记录认证请求或页面操作
+  - 记录会话建立前后的系统状态
+  - 记录退出后的访问结果

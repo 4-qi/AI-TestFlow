@@ -46,8 +46,16 @@ REQUIREMENT_BREAKDOWN_SCHEMA: dict[str, Any] = {
                     "business_rule": {"type": "string"},
                     "acceptance_criteria": {"type": "array", "items": {"type": "string"}},
                     "risk_level": {"type": "string"},
+                    "knowledge_refs": {"type": "array", "items": {"type": "string"}},
                 },
-                "required": ["requirement_id", "module", "business_rule", "acceptance_criteria", "risk_level"],
+                "required": [
+                    "requirement_id",
+                    "module",
+                    "business_rule",
+                    "acceptance_criteria",
+                    "risk_level",
+                    "knowledge_refs",
+                ],
             },
         },
         "test_points": {
@@ -60,9 +68,17 @@ REQUIREMENT_BREAKDOWN_SCHEMA: dict[str, Any] = {
                     "requirement_id": {"type": "string"},
                     "title": {"type": "string"},
                     "test_type": {"type": "string"},
-                    "priority": {"type": "string"},
+                    "priority": {"type": "string", "enum": ["P0", "P1", "P2"]},
+                    "knowledge_refs": {"type": "array", "items": {"type": "string"}},
                 },
-                "required": ["test_point_id", "requirement_id", "title", "test_type", "priority"],
+                "required": [
+                    "test_point_id",
+                    "requirement_id",
+                    "title",
+                    "test_type",
+                    "priority",
+                    "knowledge_refs",
+                ],
             },
         },
     },
@@ -70,125 +86,93 @@ REQUIREMENT_BREAKDOWN_SCHEMA: dict[str, Any] = {
 }
 
 
-TEST_CASE_SCHEMA: dict[str, Any] = {
+TEST_CHARTER_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
     "properties": {
-        "test_cases": {
+        "test_charters": {
             "type": "array",
             "items": {
                 "type": "object",
                 "additionalProperties": False,
                 "properties": {
-                    "test_case_id": {"type": "string"},
+                    "charter_id": {"type": "string"},
                     "requirement_id": {"type": "string"},
                     "test_point_id": {"type": "string"},
-                    "title": {"type": "string"},
-                    "precondition": {"type": "string"},
-                    "steps": {"type": "array", "items": {"type": "string"}},
-                    "test_data": {"type": "string"},
+                    "goal": {"type": "string"},
+                    "channel": {"type": "string", "enum": ["api", "browser"]},
+                    "preconditions": {"type": "string"},
+                    "test_data_strategy": {"type": "string"},
                     "expected_result": {"type": "string"},
-                    "priority": {"type": "string"},
-                    "automation_type": {"type": "string"},
+                    "priority": {"type": "string", "enum": ["P0", "P1", "P2"]},
+                    "knowledge_refs": {"type": "array", "items": {"type": "string"}},
                 },
                 "required": [
-                    "test_case_id",
+                    "charter_id",
                     "requirement_id",
                     "test_point_id",
-                    "title",
-                    "precondition",
-                    "steps",
-                    "test_data",
+                    "goal",
+                    "channel",
+                    "preconditions",
+                    "test_data_strategy",
                     "expected_result",
                     "priority",
-                    "automation_type",
+                    "knowledge_refs",
                 ],
             },
         }
     },
-    "required": ["test_cases"],
+    "required": ["test_charters"],
 }
 
 
-SCRIPT_PLAN_SCHEMA: dict[str, Any] = {
+API_ACTION_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
     "properties": {
-        "api_tests": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "additionalProperties": False,
-                "properties": {
-                    "test_case_id": {"type": "string"},
-                    "name": {"type": "string"},
-                    "setup_api_actions": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "additionalProperties": False,
-                            "properties": {
-                                "method": {"type": "string", "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"]},
-                                "path": {"type": "string"},
-                                "json_body": {"type": "object"},
-                                "expected_status": {"type": "integer"},
-                            },
-                            "required": ["method", "path", "json_body", "expected_status"],
-                        },
-                    },
-                    "method": {"type": "string", "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"]},
-                    "path": {"type": "string"},
-                    "json_body": {"type": "object"},
-                    "expected_status": {"type": "integer"},
-                    "expected_json_contains": {"type": "object"},
-                },
-                "required": [
-                    "test_case_id",
-                    "name",
-                    "setup_api_actions",
-                    "method",
-                    "path",
-                    "json_body",
-                    "expected_status",
-                    "expected_json_contains",
-                ],
-            },
-        },
-        "ui_tests": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "additionalProperties": False,
-                "properties": {
-                    "test_case_id": {"type": "string"},
-                    "title": {"type": "string"},
-                    "actions": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "additionalProperties": False,
-                            "properties": {
-                                "action": {
-                                    "type": "string",
-                                    "enum": ["goto", "fill_label", "click_role", "expect_text", "expect_url"],
-                                },
-                                "url": {"type": "string"},
-                                "label": {"type": "string"},
-                                "value": {"type": "string"},
-                                "role": {"type": "string"},
-                                "name": {"type": "string"},
-                                "text": {"type": "string"},
-                                "pattern": {"type": "string"},
-                            },
-                            "required": ["action"],
-                        },
-                    },
-                },
-                "required": ["test_case_id", "title", "actions"],
-            },
-        },
+        "action": {"type": "string", "enum": ["request", "finish"]},
+        "method": {"type": "string", "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"]},
+        "path": {"type": "string"},
+        "headers": {"type": "object"},
+        "query": {"type": "object"},
+        "body": {"type": "object"},
+        "status": {"type": "string", "enum": ["passed", "failed", "blocked"]},
+        "actual_result": {"type": "string"},
+        "evidence": {"type": "array", "items": {"type": "string"}},
     },
-    "required": ["api_tests", "ui_tests"],
+    "required": ["action"],
+}
+
+
+BROWSER_ACTION_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "action": {
+            "type": "string",
+            "enum": ["navigate", "fill", "click", "press", "select_option", "check", "scroll", "wait", "finish"],
+        },
+        "target": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "strategy": {"type": "string", "enum": ["role", "label", "text", "placeholder"]},
+                "role": {"type": "string"},
+                "value": {"type": "string"},
+            },
+            "required": ["strategy", "value"],
+        },
+        "path": {"type": "string"},
+        "value": {"type": "string"},
+        "key": {"type": "string"},
+        "option": {"type": "string"},
+        "direction": {"type": "string", "enum": ["up", "down"]},
+        "milliseconds": {"type": "integer"},
+        "status": {"type": "string", "enum": ["passed", "failed", "blocked"]},
+        "actual_result": {"type": "string"},
+        "evidence": {"type": "array", "items": {"type": "string"}},
+    },
+    "required": ["action"],
 }
 
 
@@ -197,6 +181,24 @@ DEFECT_ANALYSIS_SCHEMA: dict[str, Any] = {
     "additionalProperties": False,
     "properties": {
         "status": {"type": "string"},
+        "classifications": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "execution_type": {"type": "string", "enum": ["api", "browser"]},
+                    "execution_id": {"type": "string"},
+                    "charter_id": {"type": "string"},
+                    "classification": {
+                        "type": "string",
+                        "enum": ["product_defect", "test_data_issue", "environment_failure", "agent_blocked", "passed"],
+                    },
+                    "reason": {"type": "string"},
+                },
+                "required": ["execution_type", "execution_id", "charter_id", "classification", "reason"],
+            },
+        },
         "defects": {
             "type": "array",
             "items": {
@@ -206,30 +208,34 @@ DEFECT_ANALYSIS_SCHEMA: dict[str, Any] = {
                     "bug_id": {"type": "string"},
                     "title": {"type": "string"},
                     "requirement_id": {"type": "string"},
-                    "test_case_id": {"type": "string"},
-                    "failed_test_name": {"type": "string"},
+                    "charter_id": {"type": "string"},
+                    "execution_type": {"type": "string", "enum": ["api", "browser"]},
+                    "execution_id": {"type": "string"},
                     "expected": {"type": "string"},
                     "actual": {"type": "string"},
                     "severity": {"type": "string"},
                     "priority": {"type": "string"},
                     "reproduction_steps": {"type": "array", "items": {"type": "string"}},
+                    "evidence_paths": {"type": "array", "items": {"type": "string"}},
                 },
                 "required": [
                     "bug_id",
                     "title",
                     "requirement_id",
-                    "test_case_id",
-                    "failed_test_name",
+                    "charter_id",
+                    "execution_type",
+                    "execution_id",
                     "expected",
                     "actual",
                     "severity",
                     "priority",
                     "reproduction_steps",
+                    "evidence_paths",
                 ],
             },
         },
     },
-    "required": ["status", "defects"],
+    "required": ["status", "classifications", "defects"],
 }
 
 

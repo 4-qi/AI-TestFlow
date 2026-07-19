@@ -14,6 +14,8 @@ class LlmSettings:
     api_key_env: str
     base_url: str | None = None
     raw_output_dir: Path | None = None
+    request_timeout_seconds: float = 120
+    max_retries: int = 1
 
 
 class LlmJsonParseError(ValueError):
@@ -40,12 +42,25 @@ class OpenAILlmClient:
         except ModuleNotFoundError as exc:
             raise RuntimeError("openai package is required for agent-run. Install backend/requirements.txt.") from exc
         base_url = settings.base_url or ("https://api.deepseek.com" if settings.provider == "deepseek" else None)
-        self._client = OpenAI(api_key=api_key, base_url=base_url) if base_url else OpenAI(api_key=api_key)
+        client_options = {
+            "api_key": api_key,
+            "timeout": settings.request_timeout_seconds,
+            "max_retries": settings.max_retries,
+        }
+        if base_url:
+            client_options["base_url"] = base_url
+        self._client = OpenAI(**client_options)
         self._provider = settings.provider
         self._model = settings.model
         self._raw_output_dir = settings.raw_output_dir
+        self._call_count = 0
+
+    @property
+    def metrics(self) -> dict[str, int]:
+        return {"llm_calls": self._call_count}
 
     def generate_json(self, *, name: str, system_prompt: str, user_prompt: str, schema: dict[str, Any]) -> dict[str, Any]:
+        self._call_count += 1
         if self._provider == "deepseek":
             return self._generate_deepseek_json(
                 name=name,
@@ -112,6 +127,7 @@ class OpenAILlmClient:
             raise LlmJsonParseError(name, exc, raw_path) from exc
 
     def _repair_deepseek_json(self, *, name: str, invalid_content: str, parse_error: str, schema: dict[str, Any]) -> str:
+        self._call_count += 1
         schema_text = json.dumps(schema, ensure_ascii=False, indent=2)
         response = self._client.chat.completions.create(
             model=self._model,

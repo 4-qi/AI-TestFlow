@@ -1,0 +1,23 @@
+knowledge_id: KB-FORM-001
+title: 表单输入与边界验证
+tags:
+  - form
+  - 表单
+  - 输入
+  - 必填
+  - 长度
+  - 边界
+  - validation
+applicable_channels:
+  - browser
+  - api
+heuristics:
+  - 验证必填字段为空时的处理
+  - 验证长度和数值规则的边界内、边界值和边界外输入
+  - 验证关联字段之间的一致性约束
+  - 验证重复提交和重复业务值的处理
+  - 仅在需求明确时验证精确错误文案
+evidence_requirements:
+  - 记录输入数据和提交动作
+  - 记录页面反馈或接口状态码与响应体
+  - 将实际结果回溯到明确需求规则

@@ -2,65 +2,174 @@ from __future__ import annotations
 
 import json
 import os
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import pytest
 
+from ai_testflow.agent.agents.api_agent import run_api_agent
+from ai_testflow.agent.agents.automation_agent import run_automation_agent
+from ai_testflow.agent.agents.browser_agent import run_browser_agent
+from ai_testflow.agent.agents.knowledge_agent import load_knowledge_items, run_knowledge_agent
+from ai_testflow.agent.agents.requirement_agent import _validate_requirement_traceability
+from ai_testflow.agent.agents.test_design_agent import _validate_charter_traceability
+from ai_testflow.agent.http_controller import HttpController, validate_api_action
 from ai_testflow.agent.llm_client import LlmJsonParseError, LlmSettings, OpenAILlmClient, _unwrap_named_object, load_env_file
-from ai_testflow.agent.agents.script_agent import run_script_agent
-from ai_testflow.agent.orchestrator import _build_failure_classification, _filter_defects_to_failed_tests
-from ai_testflow.agent_designer import design_requirements_from_prd, design_test_cases_from_requirements
-from ai_testflow.analyzer import analyze_prd, build_requirements, extract_requirement_rows, extract_test_case_rows
+from ai_testflow.agent.orchestrator import _filter_defects_to_execution_evidence, _select_charters
+from ai_testflow.browser.controller import validate_browser_action
 from ai_testflow.cli import _print_agent_summary
-from ai_testflow.config import load_config
-from ai_testflow.inspector import KNOWN_DEFECTS, run_inspection
-from ai_testflow.pytest_runner import parse_pytest_result
-from ai_testflow.test_generator import render_generated_api_tests, render_generated_playwright_tests
+from ai_testflow.config import AutomationConfig, BrowserRuntimeConfig, ApiRuntimeConfig, load_config
 
 
-def test_load_config_reads_exact_paths():
+class SequenceClient:
+    def __init__(self, responses):
+        self.responses = list(responses)
+        self.calls = []
+
+    def generate_json(self, **kwargs):
+        self.calls.append(kwargs)
+        if not self.responses:
+            raise AssertionError("No fake LLM response remains")
+        return self.responses.pop(0)
+
+
+class DemoHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == "/":
+            body = b"""<!doctype html><html><head><title>Generic Form</title></head><body>
+<label for='name'>Name</label><input id='name' placeholder='Your name'>
+<button onclick=\"document.getElementById('result').textContent='Saved'\">Submit</button>
+<p id='result'></p></body></html>"""
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        if self.path == "/spa":
+            body = b"""<!doctype html><html><head><title>SPA Form</title></head><body>
+<button onclick="history.pushState({}, '', '/next'); setTimeout(() => { document.body.innerHTML=`<h1>Next page</h1><label>Email<input></label>`; }, 100)">Continue</button>
+</body></html>"""
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        if self.path == "/session":
+            authenticated = "session=active" in (self.headers.get("Cookie") or "")
+            self._json(200 if authenticated else 401, {"authenticated": authenticated})
+            return
+        self._json(404, {"error": "not found"})
+
+    def do_POST(self):
+        length = int(self.headers.get("Content-Length", "0"))
+        payload = json.loads(self.rfile.read(length) or b"{}")
+        if self.path == "/session" and payload.get("username") == "tester":
+            self.send_response(200)
+            self.send_header("Set-Cookie", "session=active; Path=/")
+            body = json.dumps({"authenticated": True}).encode("utf-8")
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        self._json(400, {"authenticated": False})
+
+    def _json(self, status, payload):
+        body = json.dumps(payload).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, format, *args):
+        return
+
+
+@pytest.fixture()
+def demo_server():
+    server = ThreadingHTTPServer(("127.0.0.1", 0), DemoHandler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield f"http://127.0.0.1:{server.server_port}"
+    finally:
+        server.shutdown()
+        thread.join(timeout=5)
+
+
+def _charter(charter_id="CH-001", channel="api"):
+    return {
+        "charter_id": charter_id,
+        "requirement_id": "REQ-001",
+        "test_point_id": "TP-001",
+        "goal": "验证通用测试目标",
+        "channel": channel,
+        "preconditions": "服务可访问",
+        "test_data_strategy": "使用独立测试数据",
+        "expected_result": "操作成功",
+        "priority": "P0",
+        "knowledge_refs": ["KB-WEB-001"],
+    }
+
+
+def test_load_config_reads_live_agent_runtime():
     config = load_config("ai-testflow.yml")
 
     assert config.project_name == "AI-TestFlow"
-    assert str(config.prd_path) == "docs/prd.md"
-    assert str(config.output_dir) == "ai-testflow-runs/latest"
-    assert str(config.generated_tests_path) == "ai-testflow-runs/latest/generated_api_tests.py"
-    assert str(config.generated_playwright_tests_path) == "frontend/generated-tests/generated_playwright_tests.spec.js"
-    assert config.llm_provider == "deepseek"
-    assert config.llm_model == "deepseek-v4-pro"
-    assert config.llm_api_key_env == "DEEPSEEK_API_KEY"
-    assert config.llm_base_url == "https://api.deepseek.com"
-    assert config.api_test_runtime == {"mode": "flask_app", "app_factory": "backend.app:create_app"}
-    assert config.playwright_command == [
-        "bash",
-        "-lc",
-        "cd frontend && npm exec playwright test generated-tests/generated_playwright_tests.spec.js --config playwright.config.js",
-    ]
-    assert config.pytest_command == [
-        "conda",
-        "run",
-        "-n",
-        "AI-TestFlow",
-        "python",
-        "-m",
-        "pytest",
-        "-q",
-        "backend/tests",
-    ]
-    assert config.generated_pytest_command == [
-        "conda",
-        "run",
-        "-n",
-        "AI-TestFlow",
-        "python",
-        "-m",
-        "pytest",
-        "-q",
-        "ai-testflow-runs/latest/generated_api_tests.py",
-    ]
+    assert str(config.knowledge_base.path) == "knowledge/testing"
+    assert config.knowledge_base.top_k == 4
+    assert config.llm_request_timeout_seconds == 120
+    assert config.llm_max_retries == 1
+    assert config.api_runtime.base_url == "http://127.0.0.1:5000"
+    assert config.api_runtime.max_steps_per_charter == 4
+    assert config.browser_runtime.observation_mode == "structured"
+    assert config.browser_runtime.playwright_cwd == Path("frontend")
+    assert config.browser_runtime.max_steps_per_charter == 6
+    assert config.automation.output_dir == Path("ai-testflow-runs/latest/regression")
+    assert config.execution_policy.max_charters_per_channel == 4
 
 
-def test_llm_client_requires_api_key(monkeypatch, tmp_path):
+def test_agent_run_no_longer_uses_script_agent():
+    source = Path("ai_testflow/agent/orchestrator.py").read_text(encoding="utf-8")
+
+    assert "run_script_agent" not in source
+    assert "run_execute_agent" not in source
+    assert "run_browser_agent" in source
+    assert "run_api_agent" in source
+    assert source.index("[8/10] Report Agent") < source.index("[10/10] Automation Agent")
+
+
+def test_prd_does_not_disclose_ground_truth_to_agent():
+    prd = Path("docs/prd.md").read_text(encoding="utf-8")
+    ground_truth = Path("docs/samples/demo-defect-ground-truth.md").read_text(encoding="utf-8")
+
+    assert "后端注册接口不校验用户名长度" not in prd
+    assert "后端注册接口未校验用户名长度" in ground_truth
+
+
+def test_knowledge_agent_loads_and_retrieves_structured_items():
+    items = load_knowledge_items(Path("knowledge/testing"))
+    result = run_knowledge_agent(
+        Path("knowledge/testing"),
+        {
+            "business_goal": "验证用户注册表单",
+            "functional_requirements": [{"title": "用户名长度和必填校验"}],
+            "interface_scope": ["POST /api/register"],
+        },
+        top_k=3,
+    )
+
+    assert len(items) == 4
+    ids = [item["knowledge_id"] for item in result["selected_items"]]
+    assert "KB-FORM-001" in ids
+    assert all(item["matched_terms"] for item in result["selected_items"])
+
+
+def test_llm_client_requires_configured_api_key(monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
 
@@ -68,22 +177,7 @@ def test_llm_client_requires_api_key(monkeypatch, tmp_path):
         OpenAILlmClient(LlmSettings(provider="openai", model="gpt-4.1-mini", api_key_env="OPENAI_API_KEY"))
 
 
-def test_deepseek_llm_client_requires_api_key(monkeypatch, tmp_path):
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
-
-    with pytest.raises(RuntimeError, match="DEEPSEEK_API_KEY is required for agent-run"):
-        OpenAILlmClient(
-            LlmSettings(
-                provider="deepseek",
-                model="deepseek-v4-pro",
-                api_key_env="DEEPSEEK_API_KEY",
-                base_url="https://api.deepseek.com",
-            )
-        )
-
-
-def test_load_env_file_sets_missing_api_key(monkeypatch, tmp_path):
+def test_load_env_file_sets_missing_key(monkeypatch, tmp_path):
     monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
     env_path = tmp_path / ".env"
     env_path.write_text("DEEPSEEK_API_KEY=local-test-key\n", encoding="utf-8")
@@ -94,53 +188,317 @@ def test_load_env_file_sets_missing_api_key(monkeypatch, tmp_path):
 
 
 def test_llm_json_unwraps_named_object():
-    data = {
-        "prd_analysis": {
-            "business_goal": "验证登录注册 Demo",
-            "user_roles": ["未登录用户"],
-            "functional_requirements": [],
-            "non_functional_requirements": [],
-            "interface_scope": [],
-        }
-    }
+    data = {"test_charter_design": {"test_charters": []}}
 
-    assert _unwrap_named_object("prd_analysis", data) == data["prd_analysis"]
+    assert _unwrap_named_object("test_charter_design", data) == data["test_charter_design"]
 
 
 def test_llm_json_parse_error_saves_raw_output(tmp_path):
     client = OpenAILlmClient.__new__(OpenAILlmClient)
     client._raw_output_dir = tmp_path
 
-    with pytest.raises(LlmJsonParseError, match="test_case_design returned invalid JSON"):
-        client._parse_json_response("test_case_design", '{"test_cases": [}')
+    with pytest.raises(LlmJsonParseError, match="test_charter_design returned invalid JSON"):
+        client._parse_json_response("test_charter_design", '{"test_charters": [}')
 
-    raw_path = tmp_path / "llm-raw-test_case_design.txt"
-    assert raw_path.read_text(encoding="utf-8") == '{"test_cases": [}'
+    assert (tmp_path / "llm-raw-test_charter_design.txt").exists()
 
 
-def test_agent_summary_prints_readable_failed_tests_and_defects(capsys):
+def test_http_controller_keeps_cookie_session(demo_server):
+    controller = HttpController(demo_server, 5)
+    login = controller.request(
+        {"method": "POST", "path": "/session", "headers": {}, "query": {}, "body": {"username": "tester"}}
+    )
+    session = controller.request(
+        {"method": "GET", "path": "/session", "headers": {}, "query": {}, "body": {}}
+    )
+
+    assert login["status_code"] == 200
+    assert login["cookie_names"] == ["session"]
+    assert session["response_body"] == {"authenticated": True}
+
+
+def test_validate_api_action_rejects_missing_request_fields():
+    with pytest.raises(ValueError, match="requires method"):
+        validate_api_action({"action": "request", "path": "/health"})
+
+    validate_api_action({"action": "request", "method": "GET", "path": "/health"})
+
+
+def test_api_agent_executes_live_requests_without_generating_script(demo_server):
+    client = SequenceClient(
+        [
+            {
+                "action": "request",
+                "method": "POST",
+                "path": "/session",
+                "headers": {},
+                "query": {},
+                "body": {"username": "tester"},
+            },
+            {
+                "action": "finish",
+                "status": "passed",
+                "actual_result": "接口返回认证成功",
+                "evidence": ["status_code=200"],
+            },
+        ]
+    )
+
+    result = run_api_agent(
+        client,
+        "prompt",
+        [_charter()],
+        ApiRuntimeConfig(True, demo_server, 5, 4),
+    )
+
+    assert result["status"] == "passed"
+    assert result["observations"][1]["status_code"] == 200
+    assert result["results"][0]["execution_id"] == "api::CH-001"
+    assert len(client.calls) == 2
+
+
+def test_validate_browser_action_rejects_code_or_selector_actions():
+    with pytest.raises(ValueError, match="Unsupported browser action"):
+        validate_browser_action({"action": "javascript", "value": "document.body"})
+
+
+def test_browser_agent_observes_and_operates_generic_page(demo_server, tmp_path):
+    client = SequenceClient(
+        [
+            {
+                "action": "fill",
+                "target": {"strategy": "label", "value": "Name"},
+                "value": "Alice",
+            },
+            {
+                "action": "click",
+                "target": {"strategy": "role", "role": "button", "value": "Submit"},
+            },
+            {
+                "action": "finish",
+                "status": "passed",
+                "actual_result": "页面显示 Saved",
+                "evidence": ["visible_text contains Saved"],
+            },
+        ]
+    )
+    runtime = BrowserRuntimeConfig(
+        enabled=True,
+        base_url=demo_server,
+        browser="chromium",
+        headless=True,
+        observation_mode="structured",
+        max_steps_per_charter=5,
+        action_timeout_ms=5000,
+        playwright_cwd=Path("frontend"),
+        screenshot="on_finish",
+    )
+
+    result = run_browser_agent(
+        client,
+        "prompt",
+        [_charter("CH-WEB-001", "browser")],
+        runtime,
+        Path.cwd(),
+        tmp_path,
+    )
+
+    assert result["status"] == "passed"
+    assert any("Saved" in item["visible_text"] for item in result["observations"])
+    assert result["observations"][0]["accessibility_snapshot"]
+    assert result["observations"][0]["interactive_elements"]
+    assert result["results"][0]["evidence"][-1].endswith("CH-WEB-001-passed.png")
+
+
+def test_browser_agent_observes_settled_spa_page_after_click(demo_server, tmp_path):
+    client = SequenceClient(
+        [
+            {"action": "navigate", "path": "/spa"},
+            {
+                "action": "click",
+                "target": {"strategy": "role", "role": "button", "value": "Continue"},
+            },
+            {
+                "action": "finish",
+                "status": "passed",
+                "actual_result": "SPA 页面完成更新",
+                "evidence": ["visible_text contains Next page"],
+            },
+        ]
+    )
+    runtime = BrowserRuntimeConfig(
+        enabled=True,
+        base_url=demo_server,
+        browser="chromium",
+        headless=True,
+        observation_mode="structured",
+        max_steps_per_charter=4,
+        action_timeout_ms=5000,
+        playwright_cwd=Path("frontend"),
+        screenshot="on_finish",
+    )
+
+    result = run_browser_agent(
+        client,
+        "prompt",
+        [_charter("CH-WEB-SPA-001", "browser")],
+        runtime,
+        Path.cwd(),
+        tmp_path,
+    )
+
+    assert result["status"] == "passed"
+    click_observation = result["observations"][2]
+    assert click_observation["current_url"].endswith("/next")
+    assert "Next page" in click_observation["visible_text"]
+
+
+def test_defect_filter_requires_failed_execution_and_product_classification():
+    execution = {
+        "api": {"results": [{"execution_id": "api::CH-1", "status": "failed"}]},
+        "browser": {"results": [{"execution_id": "browser::CH-2", "status": "blocked"}]},
+    }
+    analysis = {
+        "status": "has_defects",
+        "classifications": [
+            {
+                "execution_type": "api",
+                "execution_id": "api::CH-1",
+                "charter_id": "CH-1",
+                "classification": "product_defect",
+                "reason": "违反需求",
+            },
+            {
+                "execution_type": "browser",
+                "execution_id": "browser::CH-2",
+                "charter_id": "CH-2",
+                "classification": "agent_blocked",
+                "reason": "元素无法定位",
+            },
+        ],
+        "defects": [
+            {"bug_id": "BUG-001", "execution_id": "api::CH-1"},
+            {"bug_id": "BUG-002", "execution_id": "browser::CH-2"},
+        ],
+    }
+
+    filtered = _filter_defects_to_execution_evidence(analysis, execution)
+
+    assert [item["bug_id"] for item in filtered["defects"]] == ["BUG-001"]
+
+
+def test_charter_selection_prioritizes_risk_and_requirement_coverage():
+    charters = [
+        {"charter_id": "LOW", "requirement_id": "REQ-1", "priority": "P2"},
+        {"charter_id": "HIGH-A", "requirement_id": "REQ-2", "priority": "P0"},
+        {"charter_id": "HIGH-B", "requirement_id": "REQ-2", "priority": "P0"},
+        {"charter_id": "MEDIUM", "requirement_id": "REQ-3", "priority": "P1"},
+    ]
+
+    selected = _select_charters(charters, 3)
+
+    assert [item["charter_id"] for item in selected] == ["LOW", "HIGH-A", "MEDIUM"]
+
+
+def test_charter_selection_rejects_unknown_priority():
+    with pytest.raises(ValueError, match="Unsupported test charter priorities: High"):
+        _select_charters([{"charter_id": "CH", "requirement_id": "REQ", "priority": "High"}], 1)
+
+
+def test_requirement_traceability_rejects_rewritten_prd_ids():
+    prd = {"functional_requirements": [{"requirement_id": "PRD-FR-003"}]}
+    breakdown = {
+        "requirements": [{"requirement_id": "REQ-003"}],
+        "test_points": [{"requirement_id": "REQ-003", "test_point_id": "TP-003"}],
+    }
+
+    with pytest.raises(ValueError, match="preserve the exact PRD requirement_id set"):
+        _validate_requirement_traceability(breakdown, prd)
+
+
+def test_charter_traceability_rejects_unknown_test_point():
+    breakdown = {
+        "requirements": [{"requirement_id": "PRD-FR-003"}],
+        "test_points": [{"requirement_id": "PRD-FR-003", "test_point_id": "TP-003"}],
+    }
+    design = {
+        "test_charters": [
+            {"charter_id": "CH-003", "requirement_id": "PRD-FR-003", "test_point_id": "TP-MISSING"}
+        ]
+    }
+
+    with pytest.raises(ValueError, match="unknown test_point_id TP-MISSING"):
+        _validate_charter_traceability(design, breakdown)
+
+
+def test_automation_agent_only_uses_passed_execution_traces(tmp_path):
+    api_execution = {
+        "actions": [
+            {
+                "execution_id": "api::PASS",
+                "charter_id": "PASS",
+                "step": 1,
+                "action": {"action": "request", "method": "GET", "path": "/session", "headers": {}, "query": {}, "body": {}},
+            },
+            {
+                "execution_id": "api::FAIL",
+                "charter_id": "FAIL",
+                "step": 1,
+                "action": {"action": "request", "method": "GET", "path": "/broken", "headers": {}, "query": {}, "body": {}},
+            },
+        ],
+        "observations": [
+            {
+                "observation_id": "api::PASS::observation::1",
+                "execution_id": "api::PASS",
+                "step": 1,
+                "status_code": 200,
+                "response_body": {"ok": True},
+            }
+        ],
+        "results": [
+            {"execution_id": "api::PASS", "charter_id": "PASS", "status": "passed"},
+            {"execution_id": "api::FAIL", "charter_id": "FAIL", "status": "failed"},
+        ],
+    }
+    browser_execution = {"actions": [], "observations": [], "results": []}
+
+    manifest = run_automation_agent(
+        AutomationConfig(True, Path("runs/regression")),
+        api_execution,
+        browser_execution,
+        "http://127.0.0.1:5000",
+        "http://127.0.0.1:5173",
+        Path("frontend"),
+        tmp_path,
+    )
+
+    script = (tmp_path / "runs/regression/test_generated_api_regression.py").read_text(encoding="utf-8")
+    assert manifest["generated_charters"] == ["PASS"]
+    assert "api::PASS" in script
+    assert "api::FAIL" not in script
+    assert manifest["validation"][0]["status"] == "passed"
+
+
+def test_agent_summary_prints_live_execution_counts(capsys):
     _print_agent_summary(
         {
             "status": "defects_found",
-            "requirements_count": 14,
-            "test_points_count": 15,
-            "test_cases_count": 16,
-            "pytest_exit_code": 1,
-            "playwright_exit_code": 0,
-            "passed_tests": 9,
-            "failed_tests": 1,
-            "failed_test_names": ["test_generated_register_short_username_rule"],
-            "playwright_passed_tests": 4,
-            "playwright_failed_tests": 0,
-            "playwright_failed_test_names": [],
-            "unclassified_api_failures": [],
-            "unclassified_playwright_failures": [],
+            "requirements_count": 2,
+            "test_points_count": 3,
+            "test_charters_count": 4,
+            "api": {"passed": 1, "failed": 1, "blocked": 0},
+            "browser": {"passed": 1, "failed": 0, "blocked": 1},
+            "automation_status": "passed",
+            "automated_charters_count": 2,
+            "llm_metrics": {"llm_calls": 9},
             "defects": [
                 {
-                    "bug_id": "BUG-AUTO-001",
-                    "requirement_id": "REQ-003",
-                    "test_case_id": "TC-005",
-                    "failed_test_name": "test_generated_register_short_username_rule",
+                    "bug_id": "BUG-001",
+                    "requirement_id": "REQ-001",
+                    "charter_id": "CH-002",
+                    "execution_type": "api",
+                    "execution_id": "api::CH-002",
                 }
             ],
         },
@@ -148,555 +506,7 @@ def test_agent_summary_prints_readable_failed_tests_and_defects(capsys):
     )
 
     output = capsys.readouterr().out
-
-    assert "AI-TestFlow Result" in output
-    assert "- Status: defects_found" in output
-    assert "- Pytest exit code: 1" in output
-    assert "- Playwright exit code: 0" in output
-    assert "- Failed test names:" in output
-    assert "  - test_generated_register_short_username_rule" in output
-    assert (
-        "  - BUG-AUTO-001 | requirement=REQ-003 | test_case=TC-005 "
-        "| failed_test=test_generated_register_short_username_rule"
-    ) in output
-
-
-def test_parse_pytest_result_extracts_failed_test_mapping():
-    output = """
-.....F......                                                             [100%]
-FAILED backend/tests/test_api.py::test_register_rejects_short_username_by_requirement
-1 failed, 11 passed in 0.78s
-"""
-
-    result = parse_pytest_result(["pytest"], 1, output, "", output)
-
-    assert result.passed_tests == 11
-    assert result.failed_tests == 1
-    assert result.failed_test_names == ["test_register_rejects_short_username_by_requirement"]
-
-
-def test_parse_playwright_result_extracts_failed_test_titles():
-    output = """
-  1) generated-tests/generated_playwright_tests.spec.js:377:3 › 验证注册页面包含所有必要元素 ─────────
-  2) generated-tests/generated_playwright_tests.spec.js:377:3 › 用户名为空提交时显示错误提示 ─────────
-    generated-tests/generated_playwright_tests.spec.js:377:3 › 验证注册页面包含所有必要元素 ─────────
-    generated-tests/generated_playwright_tests.spec.js:377:3 › 用户名为空提交时显示错误提示 ─────────
-  2 failed
-"""
-
-    result = parse_pytest_result(["playwright"], 1, output, "", output)
-
-    assert result.failed_tests == 2
-    assert result.failed_test_names == ["验证注册页面包含所有必要元素", "用户名为空提交时显示错误提示"]
-
-
-def test_analyze_prd_extracts_requirements_and_interfaces():
-    prd_text = """
-### PRD-FR-003 用户名长度限制
-
-用户注册时，用户名长度必须大于等于 6 位。
-
-### PRD-NFR-001 响应时间
-
-接口响应时间应满足 Demo 验证需要。
-
-| 接口 | 方法 | 说明 |
-| --- | --- | --- |
-| `/api/register` | POST | 注册用户 |
-"""
-
-    analysis = analyze_prd(prd_text)
-
-    assert analysis["functional_requirements"] == [
-        {
-            "requirement_id": "PRD-FR-003",
-            "title": "用户名长度限制",
-            "description": "用户注册时，用户名长度必须大于等于 6 位。",
-        }
-    ]
-    assert analysis["non_functional_requirements"] == [
-        {
-            "requirement_id": "PRD-NFR-001",
-            "title": "响应时间",
-            "description": "接口响应时间应满足 Demo 验证需要。",
-        }
-    ]
-    assert analysis["interfaces"] == [{"path": "/api/register", "method": "POST", "description": "注册用户"}]
-
-
-def test_requirement_breakdown_merges_prd_and_spec_rows():
-    prd_analysis = {
-        "functional_requirements": [
-            {
-                "requirement_id": "PRD-FR-003",
-                "title": "用户名长度限制",
-                "description": "用户注册时，用户名长度必须大于等于 6 位。",
-            }
-        ],
-        "non_functional_requirements": [],
-        "interfaces": [],
-    }
-    requirement_spec = """
-| 需求编号 | 所属模块 | 需求描述 | 测试重点 |
-| --- | --- | --- | --- |
-| PRD-FR-003 | MOD-001 | 用户名长度必须大于等于 6 位 | 小于 6 位用户名注册失败 |
-"""
-
-    requirement_rows = extract_requirement_rows(requirement_spec)
-    requirements = build_requirements(prd_analysis, requirement_rows)
-
-    assert requirement_rows == [
-        {
-            "requirement_id": "PRD-FR-003",
-            "module_id": "MOD-001",
-            "description": "用户名长度必须大于等于 6 位",
-            "test_focus": "小于 6 位用户名注册失败",
-        }
-    ]
-    assert requirements == [
-        {
-            "requirement_id": "PRD-FR-003",
-            "title": "用户名长度限制",
-            "description": "用户注册时，用户名长度必须大于等于 6 位。",
-            "module_id": "MOD-001",
-            "test_focus": "小于 6 位用户名注册失败",
-            "source": "docs/prd.md",
-        }
-    ]
-
-
-def test_agent_designs_requirements_and_test_cases_from_prd_analysis():
-    prd_analysis = {
-        "functional_requirements": [
-            {
-                "requirement_id": "PRD-FR-003",
-                "title": "用户名长度限制",
-                "description": "用户注册时，用户名长度必须大于等于 6 位。",
-            },
-            {
-                "requirement_id": "PRD-FR-011",
-                "title": "登录成功",
-                "description": "用户输入已注册用户名和正确密码时，系统应允许用户登录并进入首页。",
-            },
-        ],
-        "non_functional_requirements": [],
-        "interfaces": [],
-    }
-
-    requirements = design_requirements_from_prd(prd_analysis)
-    test_cases = design_test_cases_from_requirements(requirements)
-
-    assert requirements == [
-        {
-            "requirement_id": "PRD-FR-003",
-            "title": "用户名长度限制",
-            "description": "用户注册时，用户名长度必须大于等于 6 位。",
-            "module_id": "MOD-001",
-            "test_focus": "小于 6 位用户名注册失败",
-            "source": "docs/prd.md",
-            "generated_by": "ai_testflow_agent",
-        },
-        {
-            "requirement_id": "PRD-FR-011",
-            "title": "登录成功",
-            "description": "用户输入已注册用户名和正确密码时，系统应允许用户登录并进入首页。",
-            "module_id": "MOD-002",
-            "test_focus": "正确账号密码登录成功",
-            "source": "docs/prd.md",
-            "generated_by": "ai_testflow_agent",
-        },
-    ]
-    assert [item["test_case_id"] for item in test_cases] == ["TC-REG-003", "TC-LOGIN-001"]
-
-
-def test_generated_api_tests_render_generic_api_actions():
-    api_tests = [
-        {
-            "test_case_id": "TC-003",
-            "name": "用户名长度小于6时注册失败",
-            "setup_api_actions": [],
-            "method": "POST",
-            "path": "/api/register",
-            "json_body": {
-                "username": "abc",
-                "password": "Password123",
-                "confirm_password": "Password123",
-            },
-            "expected_status": 400,
-            "expected_json_contains": {
-                "success": False,
-                "message": "用户名长度不能少于6位",
-            },
-        }
-    ]
-
-    generated_script = render_generated_api_tests(api_tests)
-
-    assert "def test_generated_" in generated_script
-    assert "'method': 'POST'" in generated_script
-    assert "'setup_api_actions': []" in generated_script
-    assert "'path': '/api/register'" in generated_script
-    assert "'username': 'abc'" in generated_script
-    assert 'importlib.import_module("backend.app")' in generated_script
-    assert 'assert response.status_code == case["expected_status"]' in generated_script
-    assert "_assert_json_contains(body, case[\"expected_json_contains\"])" in generated_script
-
-
-def test_generated_playwright_tests_render_generic_ui_actions():
-    ui_tests = [
-        {
-            "test_case_id": "TC-UI-001",
-            "title": "短用户名注册页面提示",
-            "actions": [
-                {"action": "goto", "url": "/register"},
-                {"action": "fill_label", "label": "用户名", "value": "abc"},
-                {"action": "click_role", "role": "button", "name": "注册"},
-                {"action": "expect_text", "text": "用户名长度不能少于6位"},
-            ],
-        }
-    ]
-
-    generated_script = render_generated_playwright_tests(ui_tests)
-
-    assert "from '@playwright/test'" in generated_script
-    assert "const cases =" in generated_script
-    assert "fill_label" in generated_script
-    assert "expect_text" in generated_script
-    assert "async function fillByLabel" in generated_script
-    assert "async function clickByRole" in generated_script
-    assert "async function expectText" in generated_script
-    assert "async function expectCurrentUrl" in generated_script
-    assert "page.getByLabel(label).first().fill(value)" in generated_script
-    assert "page.locator('button').filter({ hasText: name })" in generated_script
-    assert "page.getByText(text).first()" in generated_script
-    assert "await expect(page).toHaveURL(action.url)" in generated_script
-    assert "expect_url action requires url or pattern" in generated_script
-
-
-def test_failure_classification_keeps_defects_and_execution_failures_separate():
-    summary = {
-        "failed_test_names": ["test_real_defect", "test_script_problem"],
-        "playwright_failed_test_names": ["页面提交空用户名，验证错误提示"],
-        "defects": [{"failed_test_name": "test_real_defect"}],
-    }
-
-    classification = _build_failure_classification(summary)
-
-    assert classification == {
-        "defect_failed_tests": ["test_real_defect"],
-        "unclassified_api_failures": ["test_script_problem"],
-        "unclassified_playwright_failures": ["页面提交空用户名，验证错误提示"],
-    }
-
-
-def test_script_agent_uses_structured_plan_to_generate_scripts(tmp_path):
-    class FakeClient:
-        def generate_json(self, **kwargs):
-            assert kwargs["name"] == "script_plan"
-            return {
-                "api_tests": [
-                    {
-                        "test_case_id": "TC-REG-003",
-                        "name": "用户名长度小于6时注册失败",
-                        "setup_api_actions": [],
-                        "method": "POST",
-                        "path": "/api/register",
-                        "json_body": {
-                            "username": "abc",
-                            "password": "Password123",
-                            "confirm_password": "Password123",
-                        },
-                        "expected_status": 400,
-                        "expected_json_contains": {
-                            "success": False,
-                            "message": "用户名长度不能少于6位",
-                        },
-                    }
-                ],
-                "ui_tests": [
-                    {
-                        "test_case_id": "TC-REG-003",
-                        "title": "注册页短用户名校验",
-                        "actions": [
-                            {"action": "goto", "url": "/register"},
-                            {"action": "fill_label", "label": "用户名", "value": "abc"},
-                            {"action": "expect_text", "text": "用户名长度不能少于6位"},
-                        ],
-                    }
-                ],
-            }
-
-    test_cases = [
-        {
-            "test_case_id": "TC-REG-003",
-            "requirement_id": "PRD-FR-003",
-            "test_point_id": "TP-REG-003",
-            "title": "用户名长度小于 6 位注册失败",
-            "precondition": "用户名未存在",
-            "steps": ["输入 username=abc", "提交注册"],
-            "test_data": "username=abc",
-            "expected_result": "注册失败，提示用户名长度不能少于6位",
-            "priority": "P0",
-            "automation_type": "api_and_ui",
-        }
-    ]
-    api_target = tmp_path / "generated_api_tests.py"
-    playwright_target = tmp_path / "generated_playwright_tests.spec.js"
-
-    result = run_script_agent(
-        FakeClient(),
-        "prompt",
-        test_cases,
-        "backend source",
-        {"mode": "flask_app", "app_factory": "backend.app:create_app"},
-        api_target,
-        playwright_target,
-    )
-
-    assert result["script_plan"]["api_tests"][0]["test_case_id"] == "TC-REG-003"
-    assert "'path': '/api/register'" in api_target.read_text(encoding="utf-8")
-    playwright_text = playwright_target.read_text(encoding="utf-8")
-    assert "const cases =" in playwright_text
-    assert "fill_label" in playwright_text
-
-
-def test_script_agent_uses_review_agent_when_configured(tmp_path):
-    class FakeClient:
-        def __init__(self):
-            self.calls = []
-
-        def generate_json(self, **kwargs):
-            self.calls.append(kwargs["system_prompt"])
-            if len(self.calls) == 1:
-                return {
-                    "api_tests": [
-                        {
-                            "test_case_id": "TC-001",
-                            "name": "initial plan",
-                            "setup_api_actions": [],
-                            "method": "GET",
-                            "path": "/api/initial",
-                            "json_body": {},
-                            "expected_status": 200,
-                            "expected_json_contains": {},
-                        }
-                    ],
-                    "ui_tests": [],
-                }
-            return {
-                "api_tests": [
-                    {
-                        "test_case_id": "TC-001",
-                        "name": "reviewed plan",
-                        "setup_api_actions": [],
-                        "method": "GET",
-                        "path": "/api/reviewed",
-                        "json_body": {},
-                        "expected_status": 200,
-                        "expected_json_contains": {},
-                    }
-                ],
-                "ui_tests": [],
-            }
-
-    api_target = tmp_path / "generated_api_tests.py"
-    playwright_target = tmp_path / "generated_playwright_tests.spec.js"
-    client = FakeClient()
-
-    result = run_script_agent(
-        client,
-        "script prompt",
-        [{"test_case_id": "TC-001"}],
-        "backend source",
-        {"mode": "flask_app", "app_factory": "backend.app:create_app"},
-        api_target,
-        playwright_target,
-        prd_text="prd",
-        review_prompt="review prompt",
-    )
-
-    assert client.calls == ["script prompt", "review prompt"]
-    assert result["script_plan"]["api_tests"][0]["path"] == "/api/reviewed"
-    assert "'path': '/api/reviewed'" in api_target.read_text(encoding="utf-8")
-
-
-def test_generated_api_tests_run_setup_actions(tmp_path):
-    api_tests = [
-        {
-            "test_case_id": "TC-LOGIN-001",
-            "name": "正确用户名密码登录成功",
-            "setup_api_actions": [
-                {
-                    "method": "POST",
-                    "path": "/api/register",
-                    "json_body": {
-                        "username": "setupuser",
-                        "password": "Password123",
-                        "confirm_password": "Password123",
-                    },
-                    "expected_status": 200,
-                }
-            ],
-            "method": "POST",
-            "path": "/api/login",
-            "json_body": {
-                "username": "setupuser",
-                "password": "Password123",
-            },
-            "expected_status": 200,
-            "expected_json_contains": {
-                "message": "登录成功",
-            },
-        }
-    ]
-    generated_path = tmp_path / "generated_api_tests.py"
-    generated_path.write_text(render_generated_api_tests(api_tests), encoding="utf-8")
-
-    script = generated_path.read_text(encoding="utf-8")
-
-    assert "for setup_action in case[\"setup_api_actions\"]" in script
-    assert "'username': 'setupuser'" in script
-
-
-def test_defect_filter_keeps_only_real_failed_tests():
-    pytest_result = parse_pytest_result(
-        ["pytest"],
-        1,
-        (
-            "FAILED generated_api_tests.py::test_generated_tc_004__6_abc\n"
-            "1 failed, 14 passed"
-        ),
-        "",
-        (
-            "FAILED generated_api_tests.py::test_generated_tc_004__6_abc\n"
-            "1 failed, 14 passed"
-        ),
-    )
-    defect_analysis = {
-        "status": "has_defects",
-        "defects": [
-            {
-                "bug_id": "BUG-001",
-                "title": "短用户名注册成功",
-                "requirement_id": "PRD-FR-003",
-                "test_case_id": "TC-004",
-                "failed_test_name": "test_generated_tc_004__6_abc",
-                "expected": "HTTP 400",
-                "actual": "HTTP 200",
-                "severity": "高",
-                "priority": "高",
-                "reproduction_steps": ["POST /api/register"],
-            },
-            {
-                "bug_id": "BUG-002",
-                "title": "未失败测试不应进入 Bug",
-                "requirement_id": "PRD-FR-010",
-                "test_case_id": "TC-025",
-                "failed_test_name": "test_generated_tc_025",
-                "expected": "HTTP 401",
-                "actual": "HTTP 401",
-                "severity": "中",
-                "priority": "中",
-                "reproduction_steps": ["POST /api/login"],
-            },
-        ],
-    }
-
-    result = _filter_defects_to_failed_tests(defect_analysis, pytest_result)
-
-    assert result["status"] == "has_defects"
-    assert [item["bug_id"] for item in result["defects"]] == ["BUG-001"]
-
-
-def test_known_defect_maps_short_username_failure_to_bug():
-    defect = KNOWN_DEFECTS[0]
-
-    assert defect["requirement_id"] == "PRD-FR-003"
-    assert defect["rule_id"] == "REG-002"
-    assert defect["acceptance_id"] == "AC-003"
-    assert defect["test_case_id"] == "TC-REG-003"
-    assert defect["bug_id"] == "BUG-001"
-
-
-def test_run_inspection_writes_stable_summary(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
-    for path in [
-        "docs/prd.md",
-        "docs/samples/requirement-spec.sample.md",
-        "docs/samples/test-cases.sample.md",
-        "backend/app.py",
-        "backend/tests/test_api.py",
-        "docs/api-test-execution.md",
-        "docs/samples/test-report.sample.md",
-        "docs/samples/bug-report.sample.md",
-    ]:
-        file_path = tmp_path / path
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-        if path == "docs/samples/requirement-spec.sample.md":
-            file_path.write_text(
-                "| 需求编号 | 所属模块 | 需求描述 | 测试重点 |\n"
-                "| --- | --- | --- | --- |\n"
-                "| PRD-FR-003 | MOD-001 | 用户名长度必须大于等于 6 位 | 小于 6 位用户名注册失败 |\n",
-                encoding="utf-8",
-            )
-        elif path == "docs/samples/test-cases.sample.md":
-            file_path.write_text(
-                "| 用例编号 | 关联需求 | 标题 | 前置条件 | 测试数据 | 期望结果 | 优先级 |\n"
-                "| --- | --- | --- | --- | --- | --- | --- |\n"
-                "| TC-REG-003 | PRD-FR-003 | 用户名长度小于 6 位注册失败 | 用户名未存在 | `username=abc` | 注册失败，提示 `用户名长度不能少于6位` | P0 |\n",
-                encoding="utf-8",
-            )
-        elif path == "docs/prd.md":
-            file_path.write_text(
-                "### PRD-FR-003 用户名长度限制\n\n"
-                "用户注册时，用户名长度必须大于等于 6 位。\n",
-                encoding="utf-8",
-            )
-        else:
-            file_path.write_text(path, encoding="utf-8")
-
-    config_text = """project_name: AI-TestFlow
-llm:
-  provider: deepseek
-  model: deepseek-v4-pro
-  api_key_env: DEEPSEEK_API_KEY
-  base_url: https://api.deepseek.com
-prd_path: docs/prd.md
-requirement_spec_path: docs/samples/requirement-spec.sample.md
-test_cases_path: docs/samples/test-cases.sample.md
-backend_source_path: backend/app.py
-pytest_path: backend/tests
-pytest_command:
-  - python
-  - -c
-  - import sys; print('FAILED backend/tests/test_api.py::test_register_rejects_short_username_by_requirement'); print('1 failed, 11 passed in 0.78s'); sys.exit(1)
-generated_tests_path: ai-testflow-runs/latest/generated_api_tests.py
-generated_pytest_command:
-  - python
-  - -c
-  - import sys; print('FAILED ai-testflow-runs/latest/generated_api_tests.py::test_generated_register_rejects_short_username'); print('1 failed, 11 passed in 0.78s'); sys.exit(1)
-generated_playwright_tests_path: ai-testflow-runs/latest/generated_playwright_tests.spec.js
-api_execution_report_path: docs/api-test-execution.md
-test_report_path: docs/samples/test-report.sample.md
-bug_report_path: docs/samples/bug-report.sample.md
-output_dir: ai-testflow-runs/latest
-"""
-    (tmp_path / "ai-testflow.yml").write_text(config_text, encoding="utf-8")
-
-    config = load_config("ai-testflow.yml")
-    result = run_inspection(config, tmp_path)
-    summary = json.loads((tmp_path / "ai-testflow-runs/latest/inspection-summary.json").read_text(encoding="utf-8"))
-
-    assert result.summary["status"] == "defects_found"
-    assert summary["failed_tests"] == 1
-    assert summary["passed_tests"] == 11
-    assert summary["requirements_count"] == 1
-    assert summary["test_cases_count"] == 1
-    assert summary["bug_id"] == "BUG-001"
-    assert summary["defects"][0]["bug_id"] == "BUG-001"
-    assert summary["defects"][0]["failed_test_name"] == "test_generated_register_rejects_short_username"
-    assert (tmp_path / "ai-testflow-runs/latest/pytest-output.txt").exists()
-    assert (tmp_path / "ai-testflow-runs/latest/prd-analysis.json").exists()
-    assert (tmp_path / "ai-testflow-runs/latest/requirements.json").exists()
-    assert (tmp_path / "ai-testflow-runs/latest/generated-test-cases.md").exists()
-    assert (tmp_path / "ai-testflow-runs/latest/generated_api_tests.py").exists()
+    assert "- Test charters: 4" in output
+    assert "- API: passed=1 failed=1 blocked=0" in output
+    assert "- Browser: passed=1 failed=0 blocked=1" in output
+    assert "execution=api:api::CH-002" in output

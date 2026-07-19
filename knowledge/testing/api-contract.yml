@@ -1,0 +1,20 @@
+knowledge_id: KB-API-001
+title: API 契约与状态转换测试
+tags:
+  - api
+  - 接口
+  - http
+  - 状态码
+  - 响应
+  - contract
+applicable_channels:
+  - api
+heuristics:
+  - 验证请求方法、路径和请求数据符合接口说明
+  - 验证成功与失败响应能够区分业务结果
+  - 验证连续请求中的数据和会话状态转换
+  - 不根据当前实现反推需求未声明的精确响应内容
+evidence_requirements:
+  - 记录请求方法、路径、请求体和耗时
+  - 记录响应状态码和响应体
+  - 记录连续请求之间的状态依赖
